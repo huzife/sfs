@@ -1,11 +1,5 @@
 #include "initializor/initializor.h"
 
-// Initializor::Initializor(std::string path) m_path(path) {
-//     m_path = getcwd(nullptr, 0);
-//     // m_path = get_current_dir_name();
-//     std::cout << "path: " << m_path << std::endl;
-// }
-
 Initializor::Initializor(std::string path) : m_path(path) {}
 
 void Initializor::init() {
@@ -25,7 +19,10 @@ bool Initializor::exist() {
 void Initializor::create() {
     std::ofstream ofs(m_path, std::ios::out | std::ios::binary);
     if (ofs.is_open()) {
-        ofs.write(nullptr, DISK_SIZE);
+        char buffer[1024 * 1024];
+        for (int i = 0; i < 100; i++) {
+            ofs.write(buffer, sizeof(buffer));
+        }
     }
     else {
         std::cerr << "could not open disk file" << std::endl;
