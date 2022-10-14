@@ -101,7 +101,7 @@ BreakBeforeBraces: Custom
 BreakBeforeTernaryOperators: false
 
 # 在构造函数的初始化列表的冒号后换行
-BreakConstructorInitializers: AfterColon
+#BreakConstructorInitializers: AfterColon
 
 #BreakInheritanceList: AfterColon
 
