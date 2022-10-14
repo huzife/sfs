@@ -18,15 +18,13 @@ private:
 
     std::string m_disk_path;
 
-    std::unique_ptr<Initializor> m_initializor;
-
 protected:
     DiskManager();
 
 public:
     static std::unique_ptr<DiskManager>& getInstance();
 
-    std::unique_ptr<Initializor>& getInitializor();
+    void initDisk();
 };
 
 #endif  // __DISK_MANAGER_H

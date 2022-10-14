@@ -5,6 +5,6 @@
 int main() {
     system("clear");
     auto& disk_manager = DiskManager::getInstance();
-    disk_manager->getInitializor()->init();
+    disk_manager->initDisk();
     return 0;
 }
