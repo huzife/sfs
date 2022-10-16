@@ -2,11 +2,14 @@
 #define __DISK_MANAGER_H
 
 #include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include <memory>
 #include <string>
 #include <assert.h>
-#include "initializor/initializor.h"
+#include "simdisk/initializor.h"
+#include "simdisk/disk-block.h"
+
 
 // there can only be one disk manager, so I use singleton mode
 class DiskManager {
@@ -18,13 +21,17 @@ private:
 
     std::string m_disk_path;
 
-protected:
-    DiskManager();
-
 public:
     static std::unique_ptr<DiskManager>& getInstance();
 
     void initDisk();
+
+protected:
+    DiskManager();
+
+public:
+    DiskBlock readBlock(int id);
+
 };
 
 #endif  // __DISK_MANAGER_H

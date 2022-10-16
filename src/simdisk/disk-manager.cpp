@@ -1,4 +1,4 @@
-#include "disk-manager/disk-manager.h"
+#include "simdisk/disk-manager.h"
 
 std::unique_ptr<DiskManager> DiskManager::instance;
 
@@ -16,4 +16,18 @@ std::unique_ptr<DiskManager>& DiskManager::getInstance() {
 void DiskManager::initDisk() {
     Initializor initializor(m_disk_path);
     initializor.init();
+}
+
+DiskBlock DiskManager::readBlock(int id) {
+    std::ifstream ifs(m_disk_path, std::ios::binary | std::ios::in);
+
+    if (!ifs.is_open())
+        std::cerr << "could not open disk file" << std::endl;
+    
+    ifs.seekg(id * DiskBlock::byte_size);
+    char buffer[DiskBlock::byte_size];
+    ifs.read(buffer, sizeof(buffer));
+    ifs.close();
+
+    return DiskBlock(id, buffer);
 }

@@ -5,10 +5,10 @@
 #include <fstream>
 #include <string>
 
-#define DISK_SIZE 104857600
-
 class Initializor {
 private:
+    static constexpr int disk_size = 100 * 1024 * 1024; // 100 MiB space
+
     std::string m_path;
 
 public:

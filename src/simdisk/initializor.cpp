@@ -1,4 +1,4 @@
-#include "initializor/initializor.h"
+#include "simdisk/initializor.h"
 
 Initializor::Initializor(std::string path) : m_path(path) {}
 
@@ -18,14 +18,15 @@ bool Initializor::exist() {
 
 void Initializor::create() {
     std::ofstream ofs(m_path, std::ios::out | std::ios::binary);
-    if (ofs.is_open()) {
-        char buffer[1024 * 1024];
-        for (int i = 0; i < 100; i++) {
-            ofs.write(buffer, sizeof(buffer));
-        }
-    }
-    else {
+
+    // create an empty file and write 100 MiB
+    // warn: must use loop instead of a 100 MiB char array!!!
+    if (!ofs.is_open())
         std::cerr << "could not open disk file" << std::endl;
+
+    char buffer[1024 * 1024];
+    for (int i = 0; i < 100; i++) {
+        ofs.write(buffer, sizeof(buffer));
     }
     ofs.close();
 }
