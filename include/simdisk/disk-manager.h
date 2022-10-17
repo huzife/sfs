@@ -20,17 +20,19 @@ private:
     static std::unique_ptr<DiskManager> instance;
 
     std::string m_disk_path;
+    std::unique_ptr<Initializor> m_initializor;
 
 public:
     static std::unique_ptr<DiskManager>& getInstance();
 
     void initDisk();
 
+    DiskBlock readBlock(int id);
+
+    void writeBlock(int id, DiskBlock block);
+
 protected:
     DiskManager();
-
-public:
-    DiskBlock readBlock(int id);
 
 };
 

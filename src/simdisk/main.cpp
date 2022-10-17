@@ -7,7 +7,12 @@ int main() {
     auto& disk_manager = DiskManager::getInstance();
     disk_manager->initDisk();
 
-    std::cerr << "[debug]: " << disk_manager->readBlock(0).m_data.to_string().size() << std::endl;
+    // auto block = DiskBlock(0);
+    // for (int i = 0; i < DiskBlock::bit_size; i++) {
+    //     block.m_data.set(i, i % 2);
+    // }
+
+    // disk_manager->writeBlock(0, block);
 
     return 0;
 }
