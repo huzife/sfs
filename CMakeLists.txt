@@ -8,7 +8,7 @@ set(SIMDISK_SOURCE
     src/simdisk/main.cpp
     src/simdisk/initializor.cpp
     src/simdisk/disk-manager.cpp
-    src/simdisk/disk-block.cpp
+    src/simdisk/basic.cpp
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)

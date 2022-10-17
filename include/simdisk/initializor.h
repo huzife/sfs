@@ -4,25 +4,32 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include "simdisk/basic.h"
+
+class DiskManager;
 
 class Initializor {
 private:
-    static constexpr int disk_size = 100 * 1024 * 1024; // 100 MiB space
-
     std::string m_path;
+    const int m_block_size;
+    const int m_block_count;
 
 public:
     // Initializor();
 
-    Initializor(std::string path);
+    Initializor(std::string path, int block_size, int block_count)
+        : m_path(path), m_block_size(block_size), m_block_count(block_count) {}
 
-    void init();        // initialized file system
+    void setWriteBlock(void (*writeBlock)(int, DiskBlock));
+
+    void init(); // initialized file system
 
 private:
-    bool exist();       // check if the file system is exists
+    bool exist(); // check if the file system is exists
 
-    void create();      // create file system
+    void create(); // create file system
 
+    void format(); // format the disk
 };
 
-#endif  // __INITIALIZOR_H
+#endif // __INITIALIZOR_H
