@@ -5,6 +5,16 @@ std::shared_ptr<DiskManager> DiskManager::instance;
 DiskManager::DiskManager() {
     m_disk_path = std::string(get_current_dir_name()).append("/vdisk");
     m_initializor = std::make_unique<Initializor>(m_disk_path, DiskBlock::byte_size, block_count);
+    m_fat = std::make_shared<FAT>();
+    m_super_block = std::make_shared<SuperBlock>();
+
+    for (int i = 0; i < 400; i++) {
+        DiskBlock::bitset_to_chptr(readBlock(i).getData(), std::reinterpret_pointer_cast<char>(m_fat), sizeof(FAT), i * 1024);
+    }
+
+    DiskBlock::bitset_to_chptr(readBlock(super_block_id).getData(),
+                               std::reinterpret_pointer_cast<char>(m_super_block),
+                               sizeof(SuperBlock));
 }
 
 std::shared_ptr<DiskManager> DiskManager::getInstance() {
