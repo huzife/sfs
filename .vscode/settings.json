@@ -57,6 +57,7 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "bit": "cpp",
-        "any": "cpp"
+        "any": "cpp",
+        "ios": "cpp"
     }
 }

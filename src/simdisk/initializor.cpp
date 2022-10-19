@@ -32,15 +32,18 @@ void Initializor::create() {
 }
 
 void Initializor::format() {
-    // TODO: initialize the FAT
+    // initialize the FAT
     auto t = std::make_shared<FAT>();
-    std::memset(t->m_table, -1, sizeof(t->m_table));
+    t->m_table.resize(DiskManager::block_count, -1);
     for (int i = 0; i < DiskManager::super_block_id - 1; i++) {
         t->m_table[i] = i + 1;
     }
+
+    // get the pointer
+    auto chptr = t->dump();
     for (int i = 0; i < DiskManager::super_block_id; i++) {
         DiskBlock block(i);
-        block.setData(t, i * DiskBlock::byte_size);
+        block.setData(chptr, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i, block);
     }
 
@@ -48,15 +51,16 @@ void Initializor::format() {
     for (int i = DiskManager::super_block_id; i < m_block_count; i += SuperBlock::max_size) {
         auto g = std::make_shared<SuperBlock>();
         g->m_count = SuperBlock::max_size;
-        for (int j = i + 1; j <= i + SuperBlock::max_size; j++) {
-            g->m_free_block[j - i - 1] = j;
+        for (int j = SuperBlock::max_size; j > 0; j--) {
+            g->m_free_block.emplace_back(i + j);
         }
+
         if (i + SuperBlock::max_size == DiskManager::block_count) {
             g->m_count = SuperBlock::max_size - 1;
-            g->m_free_block[SuperBlock::max_size - 1] = -1;
+            g->m_free_block.back() = -1;
         }
         DiskBlock block(i);
-        block.setData(g);
+        block.setData(g->dump());
         DiskManager::getInstance()->writeBlock(i, block);
     }
 }

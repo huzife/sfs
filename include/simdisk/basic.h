@@ -5,15 +5,17 @@
 #include <bitset>
 #include <string>
 #include <vector>
+#include <cstdlib>
+#include <string.h>
+#include <assert.h>
 
-class SuperBlock;
+class DiskManager;
 
 // define a disk block
 class DiskBlock {
 public:
-    static constexpr int byte_size = 1024; // 1 KiB per block
-    static constexpr int bit_size = 8 * byte_size;
-
+    static constexpr int byte_size = 1024;         // 1 KiB per block
+    static constexpr int bit_size = byte_size * 8; // 8 Kib per block
 private:
     int m_id;
     std::bitset<bit_size> m_data;
@@ -23,35 +25,44 @@ public:
 
     DiskBlock(int id) : m_id(id), m_data(std::bitset<bit_size>()) {}
 
-    DiskBlock(int id, std::shared_ptr<char> buffer) : m_id(id), m_data(chptr_to_bitset(buffer, DiskBlock::byte_size)) {}
-
-    static void bitset_to_chptr(std::bitset<bit_size> data, std::shared_ptr<char> buffer, int size, int offset = 0);
-
-    static std::bitset<bit_size> chptr_to_bitset(std::shared_ptr<char> buffer, int size, int offset = 0);
-
     int getID();
 
-    std::bitset<bit_size> getData();
+    std::bitset<bit_size> getBitData();
 
-    template <class T>
-    void setData(std::shared_ptr<T> data, int offset = 0) {
-        m_data = chptr_to_bitset(std::reinterpret_pointer_cast<char>(data), sizeof(T), offset);
-    }
+    void getData(std::shared_ptr<char[]> data, int offset = 0);
+
+    void setData(std::shared_ptr<char[]> data, int offset = 0);
+};
+
+// define a Data type to implement binary data saving and loading
+class Data {
+public:
+    virtual std::shared_ptr<char[]> dump() = 0;
+
+    virtual void load(std::shared_ptr<char[]> buffer, int size) = 0;
 };
 
 // define file allocation table
-class FAT {
+class FAT : public Data {
 public:
-    int m_table[102400];
+    std::vector<int> m_table;
+
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 // define free group
-class SuperBlock {
+class SuperBlock : public Data {
 public:
     static constexpr int max_size = 200;
 
     int m_count;
-    int m_free_block[max_size];
+    std::vector<int> m_free_block;
+
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 // define index node
