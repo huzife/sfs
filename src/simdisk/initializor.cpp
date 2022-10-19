@@ -33,17 +33,27 @@ void Initializor::create() {
 
 void Initializor::format() {
     // TODO: initialize the FAT
+    auto t = std::make_shared<FAT>();
+    std::memset(t->m_table, -1, sizeof(t->m_table));
+    for (int i = 0; i < DiskManager::super_block_id - 1; i++) {
+        t->m_table[i] = i + 1;
+    }
+    for (int i = 0; i < DiskManager::super_block_id; i++) {
+        DiskBlock block(i);
+        block.setData(t, i * DiskBlock::byte_size);
+        DiskManager::getInstance()->writeBlock(i, block);
+    }
 
-    // initialize the free block
-    for (int i = 400; i < m_block_count; i += FreeGroup::max_size) {
-        auto g = std::make_shared<FreeGroup>();
-        g->m_count = FreeGroup::max_size;
-        for (int j = i + 1; j <= i + FreeGroup::max_size; j++) {
+    // initialize the super block
+    for (int i = DiskManager::super_block_id; i < m_block_count; i += SuperBlock::max_size) {
+        auto g = std::make_shared<SuperBlock>();
+        g->m_count = SuperBlock::max_size;
+        for (int j = i + 1; j <= i + SuperBlock::max_size; j++) {
             g->m_free_block[j - i - 1] = j;
         }
-        if (i + FreeGroup::max_size == DiskManager::block_count) {
-            g->m_count = FreeGroup::max_size - 1;
-            g->m_free_block[FreeGroup::max_size - 1] = -1;
+        if (i + SuperBlock::max_size == DiskManager::block_count) {
+            g->m_count = SuperBlock::max_size - 1;
+            g->m_free_block[SuperBlock::max_size - 1] = -1;
         }
         DiskBlock block(i);
         block.setData(g);

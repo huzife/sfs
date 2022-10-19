@@ -17,12 +17,15 @@ public:
     static constexpr int disk_size = 100 * 1024 * 1024; // 100 MiB space
     static constexpr int block_count = disk_size / DiskBlock::byte_size; // 102400 blocks
 
+    static constexpr int super_block_id = 400;
+
 private:
     static std::shared_ptr<DiskManager> instance;
 
     std::string m_disk_path;
     std::unique_ptr<Initializor> m_initializor;
-    std::bitset<disk_size / DiskBlock::byte_size> m_blocks;
+    std::shared_ptr<FAT> m_fat;
+    std::shared_ptr<SuperBlock> m_super_block;
 
 public:
     static std::shared_ptr<DiskManager> getInstance();

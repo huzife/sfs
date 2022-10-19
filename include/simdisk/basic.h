@@ -7,7 +7,7 @@
 #include <vector>
 #include <any>
 
-class FreeGroup;
+class SuperBlock;
 
 // define a disk block
 class DiskBlock {
@@ -26,28 +26,28 @@ public:
 
     DiskBlock(int id, std::shared_ptr<char> buffer) : m_id(id), m_data(chptr_to_bitset(buffer, DiskBlock::byte_size)) {}
 
-    static void bitset_to_chptr(std::bitset<bit_size> data, std::shared_ptr<char> buffer, int size);
+    static void bitset_to_chptr(std::bitset<bit_size> data, std::shared_ptr<char> buffer, int size, int offset = 0);
 
-    static std::bitset<bit_size> chptr_to_bitset(std::shared_ptr<char> buffer, int size);
+    static std::bitset<bit_size> chptr_to_bitset(std::shared_ptr<char> buffer, int size, int offset = 0);
 
     int getID();
 
     std::bitset<bit_size> getData();
 
     template <class T>
-    void setData(std::shared_ptr<T> data) {
-        m_data = chptr_to_bitset(std::reinterpret_pointer_cast<char>(data), sizeof(T));
+    void setData(std::shared_ptr<T> data, int offset = 0) {
+        m_data = chptr_to_bitset(std::reinterpret_pointer_cast<char>(data), sizeof(T), offset);
     }
 };
 
 // define file allocation table
 class FAT {
-private:
-    std::vector<int> m_table;
+public:
+    int m_table[102400];
 };
 
 // define free group
-class FreeGroup {
+class SuperBlock {
 public:
     static constexpr int max_size = 200;
 
