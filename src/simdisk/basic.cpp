@@ -1,6 +1,5 @@
 #include "simdisk/basic.h"
 #include "simdisk/disk-manager.h" // for some constant
-#include <iostream>               // for debug
 
 int DiskBlock::getID() {
     return m_id;
@@ -60,3 +59,26 @@ void SuperBlock::load(std::shared_ptr<char[]> buffer, int size) {
     memcpy(&m_count, buffer.get(), sizeof(m_count));
     memcpy(m_free_block.data(), buffer.get() + sizeof(m_count), max_size * 4);
 }
+
+// // BlockAllocMap
+// template <size_t N>
+// int AllocMap<N>::getSize() {
+//     int size = sizeof(m_map);
+//     if (size % DiskManager::block_size == 0)
+//         return size;
+//     return (size / DiskManager::block_size + 1) * DiskManager::block_size;
+// }
+
+
+// template <size_t N>
+// std::shared_ptr<char[]> AllocMap<N>::dump() {
+//     int size = getSize();
+//     std::shared_ptr<char[]> ret(new char[size]);
+//     memcpy(ret.get(), &m_map, size);
+//     return ret;
+// }
+
+// template <size_t N>
+// void AllocMap<N>::load(std::shared_ptr<char[]> buffer, int size) {
+//     memcpy(&m_map, buffer.get(), sizeof(m_map));
+// }

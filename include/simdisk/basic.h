@@ -6,8 +6,10 @@
 #include <string>
 #include <vector>
 #include <cstdlib>
+#include <chrono>
 #include <string.h>
 #include <assert.h>
+#include <iostream>               // for debug
 
 class DiskManager;
 
@@ -52,7 +54,8 @@ public:
     void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
-// define free group
+// TODO: modify defination of SuperBlock
+// define super block
 class SuperBlock : public Data {
 public:
     static constexpr int max_size = 200;
@@ -65,15 +68,65 @@ public:
     void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
-// define index node
-class IndexNode {
-private:
-    int m_id;
-    int m_size;
-    int m_location;
-    char m_permission;
+// define block allocation map
+template <size_t N>
+class AllocMap : public Data {
+public:
+    std::bitset<N> m_map;
 
-    int m_count;
+    // get the size that this map takes up in disk, which is a multiple of size of a block
+    int getSize() {
+        int size = sizeof(m_map);
+        if (size % DiskBlock::byte_size == 0)
+            return size;
+        return (size / DiskBlock::byte_size + 1) * DiskBlock::byte_size;
+    }
+
+    std::shared_ptr<char[]> dump() override {
+        int size = getSize();
+        std::shared_ptr<char[]> ret(new char[size]);
+        memcpy(ret.get(), &m_map, size);
+        return ret;
+    }
+
+    void load(std::shared_ptr<char[]> buffer, int size) override {
+        memcpy(&m_map, buffer.get(), sizeof(m_map));
+    }
+};
+
+// there are 7 file types in Linux
+enum class FileType {
+    NORMAL,    // normal file
+    DIRECTORY, // directory
+    BLOCK,     // block device
+    CHARACTER, // character device
+    LINK,      // symbolic link
+    PIPE,      // pipe file
+    SOCKET     // socket file
+};
+
+// define index node
+class IndexNode : public Data {
+private:
+    int m_owner;                            // owner
+    char m_permission;                      // permission
+    char m_type;                            // file type
+    int m_size;                             // file size(Byte)
+    int m_location;                         // file location on disk
+    int m_count;                            // hard link count
+    std::chrono::nanoseconds m_create_time; // file create time
+    std::chrono::nanoseconds m_access_time; // last access time
+    std::chrono::nanoseconds m_modify_time; // last modify time
+    std::chrono::nanoseconds m_change_time; // last change time
+
+    void test() {
+        sizeof(IndexNode);
+        sizeof(FileType);
+    }
+
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 // define directory entry(fcb)

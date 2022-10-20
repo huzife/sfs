@@ -39,11 +39,10 @@ void Initializor::format() {
         t->m_table[i] = i + 1;
     }
 
-    // get the pointer
-    auto chptr = t->dump();
+    auto t_buffer = t->dump();
     for (int i = 0; i < DiskManager::super_block_id; i++) {
         DiskBlock block(i);
-        block.setData(chptr, i * DiskManager::block_size);
+        block.setData(t_buffer, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i, block);
     }
 
@@ -62,5 +61,20 @@ void Initializor::format() {
         DiskBlock block(i);
         block.setData(g->dump());
         DiskManager::getInstance()->writeBlock(i, block);
+    }
+
+    // initialize the allocation map of block and inode
+    // size of allocation map of block and inode are same
+    auto m = std::make_shared<AllocMap<DiskManager::file_block_count>>();
+    m->m_map.reset();
+    std::cout << m->m_map.to_string() << std::endl;
+    auto m_buffer = m->dump();
+    for (int i = 0; i <= 12; i++) {
+        DiskBlock block1(i + 401);
+        DiskBlock block2(i + 413);
+        block1.setData(m_buffer, i * DiskManager::block_size);
+        block2.setData(m_buffer, i * DiskManager::block_size);
+        DiskManager::getInstance()->writeBlock(i + 401, block1);
+        DiskManager::getInstance()->writeBlock(i + 413, block2);
     }
 }

@@ -8,29 +8,15 @@ int main(int argc, char *argv[]) {
     disk_manager->initDisk();
     disk_manager->boot();
 
-
-    // // test SuperBlock
-    // auto s = std::make_shared<SuperBlock>();
-    // std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
-    // disk_manager->readBlock(400).getData(buffer);
-    // s->load(buffer, DiskManager::block_size);
-    // std::cout << s->m_count << std::endl;
-    // for (auto i : s->m_free_block) {
-    //     std::cout << i << ' ';
-    // }
-    // std::cout << std::endl;
-
-    // test FAT
-    auto f = std::make_shared<FAT>();
-    std::shared_ptr<char[]> buffer(new char[DiskManager::fat_size]);
-    for (int i = 0; i < 400; i++) {
-        disk_manager->readBlock(i).getData(buffer, i * DiskManager::block_size);
+    std::shared_ptr<char[]> buffer(new char[DiskManager::block_size * 12]);
+    for (int i = 0; i < 12; i++) {
+        disk_manager->readBlock(i + 401).getData(buffer, i * DiskManager::block_size);
     }
-    f->load(buffer, DiskManager::fat_size);
-    for (auto i : f->m_table) {
-        std::cout << i << ' ';
-    }
-    std::cout << std::endl;
+    auto m = std::make_shared<AllocMap<DiskManager::file_block_count>>();
+    m->load(buffer, DiskManager::block_size * 12);
+    std::cout << m->m_map.size() << std::endl;
+    std::cout << sizeof(m->m_map) << std::endl;
+    std::cout << m->m_map.to_string() << std::endl;
 
     return 0;
 }
