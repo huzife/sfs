@@ -31,7 +31,7 @@ void DiskBlock::setData(std::shared_ptr<char[]> data, int offset) {
 }
 
 // FAT
-std::shared_ptr<char[]> FAT::dump() {
+std::shared_ptr<char[]> FAT::dump(int size) {
     std::shared_ptr<char[]> ret(new char[m_table.size() * 4]);
     memcpy(ret.get(), m_table.data(), m_table.size() * 4);
 
@@ -45,40 +45,87 @@ void FAT::load(std::shared_ptr<char[]> buffer, int size) {
 }
 
 // SuperBlock
-std::shared_ptr<char[]> SuperBlock::dump() {
+std::shared_ptr<char[]> SuperBlock::dump(int size) {
     std::shared_ptr<char[]> ret(new char[DiskManager::block_size]);
-    memcpy(ret.get(), &m_count, sizeof(m_count));
-    memcpy(ret.get() + sizeof(m_count), m_free_block.data(), m_free_block.size() * 4);
+    memcpy(ret.get(), (char *)this + sizeof(Data), 40);
+    memcpy(ret.get() + 40, m_root.dump().get(), m_root.m_rec_len);
 
     return ret;
 }
 
 void SuperBlock::load(std::shared_ptr<char[]> buffer, int size) {
-    assert(size % DiskManager::block_size == 0);
-    m_free_block.resize(max_size);
-    memcpy(&m_count, buffer.get(), sizeof(m_count));
-    memcpy(m_free_block.data(), buffer.get() + sizeof(m_count), max_size * 4);
+    memcpy((char *)this + sizeof(Data), buffer.get(), 40);
+    int16_t root_size = *(buffer.get() + 44);
+    std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
+    memcpy(temp.get(), buffer.get() + 40, root_size);
+    m_root.load(temp, DiskManager::block_size);
+    m_dirt = false;
 }
 
-// // BlockAllocMap
-// template <size_t N>
-// int AllocMap<N>::getSize() {
-//     int size = sizeof(m_map);
-//     if (size % DiskManager::block_size == 0)
-//         return size;
-//     return (size / DiskManager::block_size + 1) * DiskManager::block_size;
-// }
+// IndexNode
+std::shared_ptr<char[]> IndexNode::dump(int size) {
+    std::shared_ptr<char[]> ret(new char[DiskManager::block_size]);
+    memcpy(ret.get(), (char *)this + sizeof(Data), sizeof(IndexNode) - sizeof(Data));
 
+    return ret;
+}
 
-// template <size_t N>
-// std::shared_ptr<char[]> AllocMap<N>::dump() {
-//     int size = getSize();
-//     std::shared_ptr<char[]> ret(new char[size]);
-//     memcpy(ret.get(), &m_map, size);
-//     return ret;
-// }
+void IndexNode::load(std::shared_ptr<char[]> buffer, int size) {
+    memcpy((char *)this + sizeof(Data), buffer.get(), sizeof(IndexNode) - sizeof(Data));
+}
 
-// template <size_t N>
-// void AllocMap<N>::load(std::shared_ptr<char[]> buffer, int size) {
-//     memcpy(&m_map, buffer.get(), sizeof(m_map));
-// }
+// DirectoryEntry
+std::shared_ptr<char[]> DirectoryEntry::dump(int size) {
+    std::shared_ptr<char[]> ret(new char[DiskManager::block_size]);
+    memcpy(ret.get(), (char *)this + sizeof(Data), 7);
+    memcpy(ret.get() + 7, m_filename.data(), m_name_len);
+
+    return ret;
+}
+
+void DirectoryEntry::load(std::shared_ptr<char[]> buffer, int size) {
+    memcpy((char *)this + sizeof(Data), buffer.get(), 7);
+    m_filename.assign(buffer.get() + 7, m_name_len);
+}
+
+// DirFile
+std::shared_ptr<char[]> DirFile::dump(int size) {
+    std::shared_ptr<char[]> ret(new char[size]);
+    int offset = 0;
+    memcpy(ret.get(), m_parent.dump().get(), m_parent.m_rec_len);
+    offset += m_parent.m_rec_len;
+    memcpy(ret.get() + offset, m_current.dump().get(), m_current.m_rec_len);
+    offset += m_current.m_rec_len;
+    for (auto d : m_dirs) {
+        memcpy(ret.get() + offset, d.dump().get(), d.m_rec_len);
+        offset += d.m_rec_len;
+    }
+
+    return ret;
+}
+
+void DirFile::load(std::shared_ptr<char[]> buffer, int size) {
+    int offset = 0;
+    int16_t len;
+    std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
+    // m_parent
+    len = *(buffer.get() + offset + 4);
+    memcpy(temp.get(), buffer.get() + offset, len);
+    m_parent.load(temp, len);
+    offset += len;
+    // m_current
+    len = *(buffer.get() + offset + 4);
+    memcpy(temp.get(), buffer.get() + offset, len);
+    m_current.load(temp, len);
+    offset += len;
+
+    // m_dirs
+    while (offset < size) {
+        len = *(buffer.get() + offset + 4);
+        memcpy(temp.get(), buffer.get() + offset, len);
+        DirectoryEntry d;
+        d.load(temp, len);
+        m_dirs.emplace_back(d);
+        offset += len;
+    }
+}

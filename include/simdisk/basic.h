@@ -9,7 +9,7 @@
 #include <chrono>
 #include <string.h>
 #include <assert.h>
-#include <iostream>               // for debug
+#include <iostream> // for debug
 
 class DiskManager;
 
@@ -39,7 +39,7 @@ public:
 // define a Data type to implement binary data saving and loading
 class Data {
 public:
-    virtual std::shared_ptr<char[]> dump() = 0;
+    virtual std::shared_ptr<char[]> dump(int size) = 0;
 
     virtual void load(std::shared_ptr<char[]> buffer, int size) = 0;
 };
@@ -49,21 +49,7 @@ class FAT : public Data {
 public:
     std::vector<int> m_table;
 
-    std::shared_ptr<char[]> dump() override;
-
-    void load(std::shared_ptr<char[]> buffer, int size) override;
-};
-
-// TODO: modify defination of SuperBlock
-// define super block
-class SuperBlock : public Data {
-public:
-    static constexpr int max_size = 200;
-
-    int m_count;
-    std::vector<int> m_free_block;
-
-    std::shared_ptr<char[]> dump() override;
+    std::shared_ptr<char[]> dump(int size = 0) override;
 
     void load(std::shared_ptr<char[]> buffer, int size) override;
 };
@@ -82,10 +68,10 @@ public:
         return (size / DiskBlock::byte_size + 1) * DiskBlock::byte_size;
     }
 
-    std::shared_ptr<char[]> dump() override {
-        int size = getSize();
-        std::shared_ptr<char[]> ret(new char[size]);
-        memcpy(ret.get(), &m_map, size);
+    std::shared_ptr<char[]> dump(int size = 0) override {
+        int s = getSize();
+        std::shared_ptr<char[]> ret(new char[s]);
+        memcpy(ret.get(), &m_map, s);
         return ret;
     }
 
@@ -95,7 +81,7 @@ public:
 };
 
 // there are 7 file types in Linux
-enum class FileType {
+enum class FileType : int8_t {
     NORMAL,    // normal file
     DIRECTORY, // directory
     BLOCK,     // block device
@@ -105,39 +91,73 @@ enum class FileType {
     SOCKET     // socket file
 };
 
+enum class Permission : int8_t {
+    READ = 1,
+    WRITE = 2,
+    EXEC = 4
+};
+
 // define index node
 class IndexNode : public Data {
-private:
-    int m_owner;                            // owner
-    char m_permission;                      // permission
-    char m_type;                            // file type
-    int m_size;                             // file size(Byte)
-    int m_location;                         // file location on disk
-    int m_count;                            // hard link count
-    std::chrono::nanoseconds m_create_time; // file create time
-    std::chrono::nanoseconds m_access_time; // last access time
-    std::chrono::nanoseconds m_modify_time; // last modify time
-    std::chrono::nanoseconds m_change_time; // last change time
+public:
+    FileType m_type;                                     // file type
+    Permission m_owner_permission;                       // owner permission
+    Permission m_other_permission;                       // other permission
+    int16_t m_owner;                                     // owner
+    int m_size;                                          // file size(Byte)
+    int m_location;                                      // file location on disk
+    int m_count;                                         // hard link count
+    int m_subs;                                          // number of sub directories
+    std::chrono::system_clock::time_point m_create_time; // file create time
+    std::chrono::system_clock::time_point m_access_time; // last access time
+    std::chrono::system_clock::time_point m_modify_time; // last modify time
+    std::chrono::system_clock::time_point m_change_time; // last change time
 
-    void test() {
-        sizeof(IndexNode);
-        sizeof(FileType);
-    }
-
-    std::shared_ptr<char[]> dump() override;
+    std::shared_ptr<char[]> dump(int size = 0) override;
 
     void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 // define directory entry(fcb)
-class DirectoryEntry {
-private:
-    std::string m_filename;
+class DirectoryEntry : Data {
+public:
     int m_inode;
+    int16_t m_rec_len;
+    int8_t m_name_len;
+    std::string m_filename;
+
+    std::shared_ptr<char[]> dump(int size = 0) override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
+};
+
+// TODO: modify defination of SuperBlock
+// define super block
+class SuperBlock : public Data {
+public:
+    int m_fat_location;       // FAT location on disk
+    int m_fat_size;           // FAT size(blocks)
+    int m_block_map_location; // block map location on disk
+    int m_block_map_size;     // block map size(blocks)
+    int m_inode_map_location; // inode map location on disk
+    int m_inode_map_size;     // inode map size(blocks)
+
+    int m_block_size;        // size per block(Byte)
+    int m_filename_maxbytes; // max length of filename(Byte)
+    int m_free_block;        // free blocks left
+    int m_free_inode;        // free inodes left
+
+    DirectoryEntry m_root; // dEntry of root path(/)
+
+    bool m_dirt; // record if the super block has been modified
+
+    std::shared_ptr<char[]> dump(int size = 0) override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 // define file
-class File {
+class File : public Data {
 public:
 };
 
@@ -145,10 +165,14 @@ class DataFile : public File {
 };
 
 class DirFile : public File {
-private:
+public:
     DirectoryEntry m_parent;
     DirectoryEntry m_current;
     std::vector<DirectoryEntry> m_dirs;
+
+    std::shared_ptr<char[]> dump(int size) override;
+
+    void load(std::shared_ptr<char[]> buffer, int size) override;
 };
 
 #endif // __BASIC_H

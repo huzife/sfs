@@ -31,6 +31,14 @@ private:
     void create(); // create file system
 
     void format(); // format the disk
+
+    void initFAT(); // initialize the FAT
+
+    void initSuperBlock(); // initialize the super block
+
+    void initAllocMap(); // initialize the allocation map of block and inode
+
+    void initRoot(); // initialize inode and dir file of root path
 };
 
 #endif // __INITIALIZOR_H

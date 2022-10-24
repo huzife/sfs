@@ -5,8 +5,6 @@ std::shared_ptr<DiskManager> DiskManager::instance;
 DiskManager::DiskManager() {
     m_disk_path = std::string(get_current_dir_name()).append("/vdisk");
     m_initializor = std::make_unique<Initializor>(m_disk_path, DiskManager::block_size, block_count);
-    m_fat = std::make_shared<FAT>();
-    m_super_block = std::make_shared<SuperBlock>();
 }
 
 std::shared_ptr<DiskManager> DiskManager::getInstance() {
@@ -26,11 +24,11 @@ void DiskManager::boot() {
         readBlock(i);
         readBlock(i).getData(fat_data, i * DiskManager::block_size);
     }
-    m_fat->load(fat_data, fat_size);
+    m_fat.load(fat_data, fat_size);
 
     std::shared_ptr<char[]> super_block_data(new char[DiskManager::block_size]);
     readBlock(super_block_id).getData(super_block_data);
-    m_super_block->load(super_block_data, DiskManager::block_size);
+    m_super_block.load(super_block_data, DiskManager::block_size);
 }
 
 DiskBlock DiskManager::readBlock(int id) {

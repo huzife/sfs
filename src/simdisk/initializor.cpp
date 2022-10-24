@@ -32,49 +32,105 @@ void Initializor::create() {
 }
 
 void Initializor::format() {
-    // initialize the FAT
-    auto t = std::make_shared<FAT>();
-    t->m_table.resize(DiskManager::block_count, -1);
-    for (int i = 0; i < DiskManager::super_block_id - 1; i++) {
-        t->m_table[i] = i + 1;
+    initFAT();
+    initSuperBlock();
+    initAllocMap();
+    initRoot();
+}
+
+void Initializor::initFAT() {
+    FAT t;
+    t.m_table.resize(DiskManager::block_count, -1);
+    for (int i = 1; i < DiskManager::super_block_id; i++) {
+        t.m_table[i] = i + 1;
+    }
+    for (int i = 0; i < 11; i++) {
+        t.m_table[i + 401] = i + 402;
+        t.m_table[i + 413] = i + 414;
     }
 
-    auto t_buffer = t->dump();
+    auto buffer = t.dump();
     for (int i = 0; i < DiskManager::super_block_id; i++) {
-        DiskBlock block(i);
-        block.setData(t_buffer, i * DiskManager::block_size);
-        DiskManager::getInstance()->writeBlock(i, block);
+        DiskBlock block(i + 1);
+        block.setData(buffer, i * DiskManager::block_size);
+        DiskManager::getInstance()->writeBlock(i + 1, block);
     }
+}
 
-    // initialize the super block
-    for (int i = DiskManager::super_block_id; i < m_block_count; i += SuperBlock::max_size) {
-        auto g = std::make_shared<SuperBlock>();
-        g->m_count = SuperBlock::max_size;
-        for (int j = SuperBlock::max_size; j > 0; j--) {
-            g->m_free_block.emplace_back(i + j);
-        }
+void Initializor::initSuperBlock() {
+    SuperBlock s;
+    s.m_fat_location = 1;
+    s.m_fat_size = DiskManager::fat_size / DiskManager::block_size;
+    s.m_block_map_location = 401;
+    s.m_block_map_size = 12;
+    s.m_inode_map_location = 413;
+    s.m_inode_map_size = 12;
+    s.m_block_size = DiskManager::block_size;
+    s.m_filename_maxbytes = 255;
+    s.m_free_block = DiskManager::file_block_count - 1;
+    s.m_free_inode = DiskManager::inode_block_count - 1;
 
-        if (i + SuperBlock::max_size == DiskManager::block_count) {
-            g->m_count = SuperBlock::max_size - 1;
-            g->m_free_block.back() = -1;
-        }
-        DiskBlock block(i);
-        block.setData(g->dump());
-        DiskManager::getInstance()->writeBlock(i, block);
-    }
+    s.m_root.m_filename = "/";
+    s.m_root.m_inode = 0;
+    s.m_root.m_name_len = s.m_root.m_filename.size();
+    s.m_root.m_rec_len = 7 + s.m_root.m_name_len;
 
-    // initialize the allocation map of block and inode
+    auto buffer = s.dump();
+    DiskBlock block(0);
+    block.setData(buffer);
+    DiskManager::getInstance()->writeBlock(0, block);
+}
+
+void Initializor::initAllocMap() {
     // size of allocation map of block and inode are same
-    auto m = std::make_shared<AllocMap<DiskManager::file_block_count>>();
-    m->m_map.reset();
-    std::cout << m->m_map.to_string() << std::endl;
-    auto m_buffer = m->dump();
-    for (int i = 0; i <= 12; i++) {
+    AllocMap<DiskManager::file_block_count> m;
+    m.m_map.reset();
+    m.m_map.set(0);
+    auto buffer = m.dump();
+    for (int i = 0; i < 12; i++) {
         DiskBlock block1(i + 401);
         DiskBlock block2(i + 413);
-        block1.setData(m_buffer, i * DiskManager::block_size);
-        block2.setData(m_buffer, i * DiskManager::block_size);
+        block1.setData(buffer, i * DiskManager::block_size);
+        block2.setData(buffer, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i + 401, block1);
         DiskManager::getInstance()->writeBlock(i + 413, block2);
+        if (i == 0) {
+            buffer[0] = 0;
+        }
     }
+}
+
+void Initializor::initRoot() {
+    // init inode of root path
+    IndexNode n;
+    n.m_type = FileType::DIRECTORY;                    // "/" path is a directory
+    n.m_owner_permission = static_cast<Permission>(7); // owner permission: rwx
+    n.m_other_permission = static_cast<Permission>(5); // other permission: r-x
+    n.m_owner = 0;                                     // owner: 0(root)
+    n.m_size = DiskManager::block_size;                // directory takes up one block at begin
+    n.m_location = 0;                                  // first file block
+    n.m_count = 1;                                     // 1 hard link
+    n.m_subs = 2;                                      // "." and ".."
+
+    auto now = std::chrono::system_clock::now(); // set up times to now
+    n.m_create_time = now;
+    n.m_access_time = now;
+    n.m_modify_time = now;
+    n.m_change_time = now;
+    DiskBlock inode_block(DiskManager::inode_block_offset);
+    inode_block.setData(n.dump());
+    DiskManager::getInstance()->writeBlock(DiskManager::inode_block_offset, inode_block);
+
+    // init dir file of root path
+    DirFile d;
+    DirectoryEntry temp;
+    temp.m_filename = "/";
+    temp.m_inode = 0;
+    temp.m_name_len = temp.m_filename.size();
+    temp.m_rec_len = 7 + temp.m_name_len;
+    d.m_parent = temp;
+    d.m_current = temp;
+    DiskBlock file_block(DiskManager::file_block_offset);
+    file_block.setData(d.dump(DiskManager::block_size));
+    DiskManager::getInstance()->writeBlock(DiskManager::file_block_offset, file_block);
 }
