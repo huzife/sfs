@@ -3,20 +3,11 @@
 #include "simdisk/disk-manager.h"
 
 void DiskManager::test() {
-    // std::cout << m_super_block.m_block_map_location << std::endl;
-    // std::cout << m_super_block.m_block_map_size << std::endl;
-    // std::cout << m_super_block.m_block_size << std::endl;
-    // std::cout << m_super_block.m_dirt << std::endl;
-    // std::cout << m_super_block.m_fat_location << std::endl;
-    // std::cout << m_super_block.m_fat_size << std::endl;
-    // std::cout << m_super_block.m_filename_maxbytes << std::endl;
-    
-    // for (auto i : m_fat.m_table) {
-    //     std::cout << i << ' ';
-    // }
-    std::cout << m_inode_map.m_map << std::endl;
-    std::cout << m_block_map.m_map << std::endl;
-    std::cout << std::endl;
+    auto n = getIndexNode(m_super_block.m_root.m_inode);
+    std::cout << timeToDate(n->m_create_time) << std::endl;
+    std::cout << timeToDate(n->m_access_time) << std::endl;
+    std::cout << timeToDate(n->m_modify_time) << std::endl;
+    std::cout << timeToDate(n->m_change_time) << std::endl;
 }
 
 int main(int argc, char *argv[]) {

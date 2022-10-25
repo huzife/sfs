@@ -43,19 +43,26 @@ public:
 // define a Data type to implement binary data saving and loading
 class Data {
 public:
-    virtual std::shared_ptr<char[]> dump(int size) = 0;
+    virtual std::shared_ptr<char[]> dump() = 0;
 
-    virtual void load(std::shared_ptr<char[]> buffer, int size) = 0;
+    virtual void load(std::shared_ptr<char[]> buffer) = 0;
 };
 
 // define file allocation table
 class FAT : public Data {
-public:
+private:
     std::vector<int> m_table;
 
-    std::shared_ptr<char[]> dump(int size = 0) override;
+public:
+    FAT(size_t size) : m_table(size) {}
 
-    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
+    FAT(size_t size, int val) : m_table(size, val) {}
+
+    int &operator[](size_t n) { return m_table[n]; }
+
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 // define block allocation map
@@ -80,14 +87,14 @@ public:
     bool test(size_t pos) { return m_map.test(N - pos - 1); }
     std::bitset<N>::reference operator[](size_t pos) { return m_map[N - pos - 1]; }
 
-    std::shared_ptr<char[]> dump(int size = 0) override {
+    std::shared_ptr<char[]> dump() override {
         int s = getSize();
         std::shared_ptr<char[]> ret(new char[s]);
         memcpy(ret.get(), &m_map, s);
         return ret;
     }
 
-    void load(std::shared_ptr<char[]> buffer, int size = 0) override {
+    void load(std::shared_ptr<char[]> buffer) override {
         memcpy(&m_map, buffer.get(), sizeof(m_map));
     }
 };
@@ -125,9 +132,9 @@ public:
     std::chrono::system_clock::time_point m_modify_time; // last modify time
     std::chrono::system_clock::time_point m_change_time; // last change time
 
-    std::shared_ptr<char[]> dump(int size = 0) override;
+    std::shared_ptr<char[]> dump() override;
 
-    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 // define directory entry(fcb)
@@ -138,9 +145,9 @@ public:
     int8_t m_name_len;
     std::string m_filename;
 
-    std::shared_ptr<char[]> dump(int size = 0) override;
+    std::shared_ptr<char[]> dump() override;
 
-    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 // define super block
@@ -164,17 +171,29 @@ public:
 
     bool m_dirt; // record if the super block has been modified
 
-    std::shared_ptr<char[]> dump(int size = 0) override;
+    std::shared_ptr<char[]> dump() override;
 
-    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 // define file
 class File : public Data {
 public:
+    int m_size;
+    int m_subs;
+
+    File(int size, int subs) : m_size(size), m_subs(subs) {}
 };
 
 class DataFile : public File {
+public:
+    std::shared_ptr<char[]> m_data;
+
+    DataFile(int size) : File(size, 1), m_data(new char[size]) {}
+
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 class DirFile : public File {
@@ -183,9 +202,11 @@ public:
     DirectoryEntry m_current;
     std::vector<DirectoryEntry> m_dirs;
 
-    std::shared_ptr<char[]> dump(int size) override;
+    DirFile(int size, int subs = 2) : File(size, subs) {}
 
-    void load(std::shared_ptr<char[]> buffer, int size) override;
+    std::shared_ptr<char[]> dump() override;
+
+    void load(std::shared_ptr<char[]> buffer) override;
 };
 
 #endif // __BASIC_H

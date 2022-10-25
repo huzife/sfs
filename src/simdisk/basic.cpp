@@ -52,32 +52,32 @@ void DiskBlock::setData(std::shared_ptr<char[]> data, int offset, int size) {
 }
 
 // FAT
-std::shared_ptr<char[]> FAT::dump(int size) {
+std::shared_ptr<char[]> FAT::dump() {
     std::shared_ptr<char[]> ret(new char[m_table.size() * 4]);
     memcpy(ret.get(), m_table.data(), m_table.size() * 4);
 
     return ret;
 }
 
-void FAT::load(std::shared_ptr<char[]> buffer, int size) {
+void FAT::load(std::shared_ptr<char[]> buffer) {
     m_table.resize(DiskManager::block_count);
     memcpy(m_table.data(), buffer.get(), DiskManager::fat_size);
 }
 
 // IndexNode
-std::shared_ptr<char[]> IndexNode::dump(int size) {
+std::shared_ptr<char[]> IndexNode::dump() {
     std::shared_ptr<char[]> ret(new char[DiskManager::inode_size]);
     memcpy(ret.get(), reinterpret_cast<char *>(this) + sizeof(Data), sizeof(IndexNode) - sizeof(Data));
 
     return ret;
 }
 
-void IndexNode::load(std::shared_ptr<char[]> buffer, int size) {
+void IndexNode::load(std::shared_ptr<char[]> buffer) {
     memcpy(reinterpret_cast<char *>(this) + sizeof(Data), buffer.get(), sizeof(IndexNode) - sizeof(Data));
 }
 
 // DirectoryEntry
-std::shared_ptr<char[]> DirectoryEntry::dump(int size) {
+std::shared_ptr<char[]> DirectoryEntry::dump() {
     std::shared_ptr<char[]> ret(new char[DiskManager::block_size]);
     memcpy(ret.get(), reinterpret_cast<char *>(this) + sizeof(Data), 7);
     memcpy(ret.get() + 7, m_filename.data(), m_name_len);
@@ -85,13 +85,13 @@ std::shared_ptr<char[]> DirectoryEntry::dump(int size) {
     return ret;
 }
 
-void DirectoryEntry::load(std::shared_ptr<char[]> buffer, int size) {
+void DirectoryEntry::load(std::shared_ptr<char[]> buffer) {
     memcpy(reinterpret_cast<char *>(this) + sizeof(Data), buffer.get(), 7);
     m_filename.assign(buffer.get() + 7, m_name_len);
 }
 
 // SuperBlock
-std::shared_ptr<char[]> SuperBlock::dump(int size) {
+std::shared_ptr<char[]> SuperBlock::dump() {
     std::shared_ptr<char[]> ret(new char[DiskManager::block_size]);
     memcpy(ret.get(), reinterpret_cast<char *>(this) + sizeof(Data), 48);
     memcpy(ret.get() + 48, m_root.dump().get(), m_root.m_rec_len);
@@ -99,7 +99,7 @@ std::shared_ptr<char[]> SuperBlock::dump(int size) {
     return ret;
 }
 
-void SuperBlock::load(std::shared_ptr<char[]> buffer, int size) {
+void SuperBlock::load(std::shared_ptr<char[]> buffer) {
     memcpy(reinterpret_cast<char *>(this) + sizeof(Data), buffer.get(), 48);
     int16_t root_size = *(buffer.get() + 52);
     std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
@@ -108,9 +108,18 @@ void SuperBlock::load(std::shared_ptr<char[]> buffer, int size) {
     m_dirt = false;
 }
 
+// DataFile
+std::shared_ptr<char[]> DataFile::dump() {
+    return m_data;
+}
+
+void DataFile::load(std::shared_ptr<char[]> buffer) {
+    m_data = buffer;
+}
+
 // DirFile
-std::shared_ptr<char[]> DirFile::dump(int size) {
-    std::shared_ptr<char[]> ret(new char[size]);
+std::shared_ptr<char[]> DirFile::dump() {
+    std::shared_ptr<char[]> ret(new char[m_size]);
     int offset = 0;
     memcpy(ret.get(), m_parent.dump().get(), m_parent.m_rec_len);
     offset += m_parent.m_rec_len;
@@ -124,7 +133,7 @@ std::shared_ptr<char[]> DirFile::dump(int size) {
     return ret;
 }
 
-void DirFile::load(std::shared_ptr<char[]> buffer, int size) {
+void DirFile::load(std::shared_ptr<char[]> buffer) {
     int offset = 0;
     int16_t len;
     std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
@@ -142,7 +151,7 @@ void DirFile::load(std::shared_ptr<char[]> buffer, int size) {
     // m_dirs
     // actually size here means the number of subdirectories
     int cnt = 2;
-    while (cnt < size) {
+    while (cnt < m_subs) {
         len = *(buffer.get() + offset + 4);
         memcpy(temp.get(), buffer.get() + offset, len);
         DirectoryEntry d;

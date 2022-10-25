@@ -44,7 +44,7 @@ public:
 
     DiskBlock readBlock(int id);
 
-    void writeBlock(int id, DiskBlock block);
+    void writeBlock(int id, DiskBlock &block);
 
     void initDisk();
 
@@ -58,7 +58,13 @@ public:
 
     void loadBlockMap();
 
-    IndexNode getIndexNode(int id);
+    int expandSize(int size);
+
+    std::string timeToDate(const std::chrono::system_clock::time_point &time);
+
+    std::shared_ptr<IndexNode> getIndexNode(int id);
+
+    std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
 
     // this is used for testing
     void test();

@@ -65,14 +65,13 @@ void Initializor::initSuperBlock() {
 }
 
 void Initializor::initFAT() {
-    FAT t;
-    t.m_table.resize(DiskManager::block_count, -1);
+    FAT t(DiskManager::block_count, -1);
     for (int i = 0; i < DiskManager::fat_block_count - 1; i++) {
-        t.m_table[i + 1] = i + 2;
+        t[i + 1] = i + 2;
     }
     for (int i = 0; i < 11; i++) {
-        t.m_table[i + 401] = i + 402;
-        t.m_table[i + 413] = i + 414;
+        t[i + 401] = i + 402;
+        t[i + 413] = i + 414;
     }
 
     auto buffer = t.dump();
@@ -124,7 +123,7 @@ void Initializor::initRoot() {
     DiskManager::getInstance()->writeBlock(DiskManager::inode_block_offset, inode_block);
 
     // init dir file of root path
-    DirFile d;
+    DirFile d(DiskManager::block_size);
     DirectoryEntry temp;
     temp.m_filename = "/";
     temp.m_inode = 0;
@@ -133,6 +132,6 @@ void Initializor::initRoot() {
     d.m_parent = temp;
     d.m_current = temp;
     DiskBlock file_block(DiskManager::file_block_offset);
-    file_block.setData(d.dump(DiskManager::block_size), 0);
+    file_block.setData(d.dump(), 0);
     DiskManager::getInstance()->writeBlock(DiskManager::file_block_offset, file_block);
 }
