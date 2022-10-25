@@ -31,9 +31,13 @@ public:
 
     std::bitset<bit_size> getBitData();
 
-    void getData(std::shared_ptr<char[]> data, int size = byte_size, int offset1 = 0, int offset2 = 0);
+    void getData(std::shared_ptr<char[]> data, int offset);
 
-    void setData(std::shared_ptr<char[]> data, int size = byte_size, int offset1 = 0, int offset2 = 0);
+    void getData(std::shared_ptr<char[]> data, int offset, int size);
+
+    void setData(std::shared_ptr<char[]> data, int offset);
+
+    void setData(std::shared_ptr<char[]> data, int offset, int size);
 };
 
 // define a Data type to implement binary data saving and loading
@@ -51,7 +55,7 @@ public:
 
     std::shared_ptr<char[]> dump(int size = 0) override;
 
-    void load(std::shared_ptr<char[]> buffer, int size) override;
+    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
 };
 
 // define block allocation map
@@ -83,7 +87,7 @@ public:
         return ret;
     }
 
-    void load(std::shared_ptr<char[]> buffer, int size) override {
+    void load(std::shared_ptr<char[]> buffer, int size = 0) override {
         memcpy(&m_map, buffer.get(), sizeof(m_map));
     }
 };
@@ -123,7 +127,7 @@ public:
 
     std::shared_ptr<char[]> dump(int size = 0) override;
 
-    void load(std::shared_ptr<char[]> buffer, int size) override;
+    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
 };
 
 // define directory entry(fcb)
@@ -136,10 +140,9 @@ public:
 
     std::shared_ptr<char[]> dump(int size = 0) override;
 
-    void load(std::shared_ptr<char[]> buffer, int size) override;
+    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
 };
 
-// TODO: modify defination of SuperBlock
 // define super block
 class SuperBlock : public Data {
 public:
@@ -152,6 +155,8 @@ public:
 
     int m_block_size;        // size per block(Byte)
     int m_filename_maxbytes; // max length of filename(Byte)
+    int m_total_block;       // total count of block
+    int m_total_inode;       // total count of index node
     int m_free_block;        // free blocks left
     int m_free_inode;        // free inodes left
 
@@ -161,7 +166,7 @@ public:
 
     std::shared_ptr<char[]> dump(int size = 0) override;
 
-    void load(std::shared_ptr<char[]> buffer, int size) override;
+    void load(std::shared_ptr<char[]> buffer, int size = 0) override;
 };
 
 // define file

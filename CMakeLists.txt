@@ -4,6 +4,12 @@ set(CMAKE_CXX_STANDARD 20)
 
 include_directories(include)
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+    add_compile_options(-std=c++17)
+    # add_compile_options(-O2)
+    message(STATUS "optional: -std=c++17")
+endif(CMAKE_COMPILER_IS_GNUCXX)
+
 set(SIMDISK_SOURCE
     src/simdisk/main.cpp
     src/simdisk/initializor.cpp

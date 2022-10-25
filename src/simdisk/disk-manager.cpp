@@ -14,23 +14,6 @@ std::shared_ptr<DiskManager> DiskManager::getInstance() {
     return instance;
 }
 
-void DiskManager::initDisk() {
-    m_initializor->init();
-}
-
-void DiskManager::boot() {
-    std::shared_ptr<char[]> fat_data(new char[fat_size]);
-    for (int i = 0; i < 400; i++) {
-        readBlock(i);
-        readBlock(i).getData(fat_data, DiskManager::block_size, 0, i * DiskManager::block_size);
-    }
-    m_fat.load(fat_data, fat_size);
-
-    std::shared_ptr<char[]> super_block_data(new char[DiskManager::block_size]);
-    readBlock(super_block_id).getData(super_block_data);
-    m_super_block.load(super_block_data, DiskManager::block_size);
-}
-
 DiskBlock DiskManager::readBlock(int id) {
     std::ifstream ifs(m_disk_path, std::ios::binary | std::ios::in);
 
@@ -43,7 +26,7 @@ DiskBlock DiskManager::readBlock(int id) {
     ifs.read(buffer.get(), DiskManager::block_size);
     ifs.close();
 
-    ret.setData(buffer);
+    ret.setData(buffer, 0);
 
     return ret;
 }
@@ -55,8 +38,62 @@ void DiskManager::writeBlock(int id, DiskBlock block) {
         std::cerr << "could not open disk file" << std::endl;
 
     std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
-    block.getData(buffer);
+    block.getData(buffer, 0);
     fs.seekg(id * DiskManager::block_size);
     fs.write(buffer.get(), DiskManager::block_size);
     fs.close();
+}
+
+void DiskManager::initDisk() {
+    m_initializor->init();
+}
+
+void DiskManager::boot() {
+    loadSuperBlock();
+    loadFAT();
+    loadINodeMap();
+    loadBlockMap();
+}
+
+void DiskManager::loadSuperBlock() {
+    std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
+    readBlock(super_block_id).getData(buffer, 0);
+    m_super_block.load(buffer);
+    m_super_block.m_dirt = false;
+}
+
+void DiskManager::loadFAT() {
+    std::shared_ptr<char[]> buffer(new char[m_super_block.m_fat_size * DiskManager::block_size]);
+    for (int i = 0; i < m_super_block.m_fat_size; i++) {
+        readBlock(i + m_super_block.m_fat_location).getData(buffer, i * DiskManager::block_size);
+    }
+    
+    m_fat.load(buffer);
+}
+
+void DiskManager::loadINodeMap() {
+    std::shared_ptr<char[]> buffer(new char[m_super_block.m_inode_map_size * DiskManager::block_size]);
+    for (int i = 0; i < m_super_block.m_inode_map_size; i++) {
+        readBlock(i + m_super_block.m_inode_map_location).getData(buffer, i * DiskManager::block_size);
+    }
+    m_inode_map.load(buffer);
+}
+
+void DiskManager::loadBlockMap() {
+    std::shared_ptr<char[]> buffer(new char[m_super_block.m_block_map_size * DiskManager::block_size]);
+    for (int i = 0; i < m_super_block.m_block_map_size; i++) {
+        readBlock(i + m_super_block.m_block_map_location).getData(buffer, i * DiskManager::block_size);
+    }
+    m_block_map.load(buffer);
+}
+
+IndexNode DiskManager::getIndexNode(int id) {
+    assert(id < m_super_block.m_total_inode);
+    IndexNode ret;
+    std::shared_ptr<char[]> buffer(new char[DiskManager::inode_size]);
+    int b_id = id / DiskManager::inode_per_block + DiskManager::inode_block_offset;
+    int offs = id % DiskManager::inode_per_block * DiskManager::inode_size;
+    readBlock(b_id).getData(buffer, offs, DiskManager::inode_size);
+    ret.load(buffer);
+    return ret;
 }

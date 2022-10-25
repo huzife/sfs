@@ -32,29 +32,10 @@ void Initializor::create() {
 }
 
 void Initializor::format() {
-    initFAT();
     initSuperBlock();
+    initFAT();
     initAllocMap();
     initRoot();
-}
-
-void Initializor::initFAT() {
-    FAT t;
-    t.m_table.resize(DiskManager::block_count, -1);
-    for (int i = 1; i < DiskManager::super_block_id; i++) {
-        t.m_table[i] = i + 1;
-    }
-    for (int i = 0; i < 11; i++) {
-        t.m_table[i + 401] = i + 402;
-        t.m_table[i + 413] = i + 414;
-    }
-
-    auto buffer = t.dump();
-    for (int i = 0; i < DiskManager::super_block_id; i++) {
-        DiskBlock block(i + 1);
-        block.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
-        DiskManager::getInstance()->writeBlock(i + 1, block);
-    }
 }
 
 void Initializor::initSuperBlock() {
@@ -67,6 +48,8 @@ void Initializor::initSuperBlock() {
     s.m_inode_map_size = 12;
     s.m_block_size = DiskManager::block_size;
     s.m_filename_maxbytes = 255;
+    s.m_total_block = DiskManager::file_block_count;
+    s.m_total_inode = DiskManager::file_block_count;
     s.m_free_block = DiskManager::file_block_count - 1;
     s.m_free_inode = DiskManager::inode_block_count - 1;
 
@@ -77,8 +60,27 @@ void Initializor::initSuperBlock() {
 
     auto buffer = s.dump();
     DiskBlock block(0);
-    block.setData(buffer);
+    block.setData(buffer, 0);
     DiskManager::getInstance()->writeBlock(0, block);
+}
+
+void Initializor::initFAT() {
+    FAT t;
+    t.m_table.resize(DiskManager::block_count, -1);
+    for (int i = 0; i < DiskManager::fat_block_count - 1; i++) {
+        t.m_table[i + 1] = i + 2;
+    }
+    for (int i = 0; i < 11; i++) {
+        t.m_table[i + 401] = i + 402;
+        t.m_table[i + 413] = i + 414;
+    }
+
+    auto buffer = t.dump();
+    for (int i = 0; i < DiskManager::fat_block_count; i++) {
+        DiskBlock block(i + 1);
+        block.setData(buffer, i * DiskManager::block_size);
+        DiskManager::getInstance()->writeBlock(i + 1, block);
+    }
 }
 
 void Initializor::initAllocMap() {
@@ -90,8 +92,8 @@ void Initializor::initAllocMap() {
     for (int i = 0; i < 12; i++) {
         DiskBlock block1(i + 401);
         DiskBlock block2(i + 413);
-        block1.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
-        block2.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
+        block1.setData(buffer, i * DiskManager::block_size);
+        block2.setData(buffer, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i + 401, block1);
         DiskManager::getInstance()->writeBlock(i + 413, block2);
         if (i == 0) {
@@ -118,7 +120,7 @@ void Initializor::initRoot() {
     n.m_modify_time = now;
     n.m_change_time = now;
     DiskBlock inode_block(DiskManager::inode_block_offset);
-    inode_block.setData(n.dump(), DiskManager::inode_size);
+    inode_block.setData(n.dump(), 0, DiskManager::inode_size);
     DiskManager::getInstance()->writeBlock(DiskManager::inode_block_offset, inode_block);
 
     // init dir file of root path
@@ -131,6 +133,6 @@ void Initializor::initRoot() {
     d.m_parent = temp;
     d.m_current = temp;
     DiskBlock file_block(DiskManager::file_block_offset);
-    file_block.setData(d.dump(DiskManager::block_size));
+    file_block.setData(d.dump(DiskManager::block_size), 0);
     DiskManager::getInstance()->writeBlock(DiskManager::file_block_offset, file_block);
 }
