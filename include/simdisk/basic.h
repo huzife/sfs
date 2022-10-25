@@ -31,9 +31,9 @@ public:
 
     std::bitset<bit_size> getBitData();
 
-    void getData(std::shared_ptr<char[]> data, int offset = 0);
+    void getData(std::shared_ptr<char[]> data, int size = byte_size, int offset1 = 0, int offset2 = 0);
 
-    void setData(std::shared_ptr<char[]> data, int offset = 0);
+    void setData(std::shared_ptr<char[]> data, int size = byte_size, int offset1 = 0, int offset2 = 0);
 };
 
 // define a Data type to implement binary data saving and loading
@@ -67,6 +67,14 @@ public:
             return size;
         return (size / DiskBlock::byte_size + 1) * DiskBlock::byte_size;
     }
+
+    // overload some function provide by bitset
+    void set() { m_map.set(); }
+    void set(size_t pos, bool val = true) { m_map.set(N - pos - 1, val); }
+    void reset() { m_map.reset(); }
+    void reset(size_t pos) { m_map.reset(N - pos - 1); }
+    bool test(size_t pos) { return m_map.test(N - pos - 1); }
+    std::bitset<N>::reference operator[](size_t pos) { return m_map[N - pos - 1]; }
 
     std::shared_ptr<char[]> dump(int size = 0) override {
         int s = getSize();

@@ -24,6 +24,7 @@ public:
     static constexpr int file_block_offset = 6424;             // first file block id is 6424
     static constexpr int fat_size = block_count * 4;           // FAT takes up 409600 Bytes
     static constexpr int super_block_id = 0;                   // super block is 400
+    static constexpr int inode_size = 64;                      // 64 Byte per index node
 
 private:
     static std::shared_ptr<DiskManager> instance;

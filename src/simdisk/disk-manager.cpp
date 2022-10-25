@@ -22,7 +22,7 @@ void DiskManager::boot() {
     std::shared_ptr<char[]> fat_data(new char[fat_size]);
     for (int i = 0; i < 400; i++) {
         readBlock(i);
-        readBlock(i).getData(fat_data, i * DiskManager::block_size);
+        readBlock(i).getData(fat_data, DiskManager::block_size, 0, i * DiskManager::block_size);
     }
     m_fat.load(fat_data, fat_size);
 

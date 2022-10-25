@@ -52,7 +52,7 @@ void Initializor::initFAT() {
     auto buffer = t.dump();
     for (int i = 0; i < DiskManager::super_block_id; i++) {
         DiskBlock block(i + 1);
-        block.setData(buffer, i * DiskManager::block_size);
+        block.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i + 1, block);
     }
 }
@@ -84,14 +84,14 @@ void Initializor::initSuperBlock() {
 void Initializor::initAllocMap() {
     // size of allocation map of block and inode are same
     AllocMap<DiskManager::file_block_count> m;
-    m.m_map.reset();
-    m.m_map.set(0);
+    m.reset();
+    m.set(0);
     auto buffer = m.dump();
     for (int i = 0; i < 12; i++) {
         DiskBlock block1(i + 401);
         DiskBlock block2(i + 413);
-        block1.setData(buffer, i * DiskManager::block_size);
-        block2.setData(buffer, i * DiskManager::block_size);
+        block1.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
+        block2.setData(buffer, DiskManager::block_size, 0, i * DiskManager::block_size);
         DiskManager::getInstance()->writeBlock(i + 401, block1);
         DiskManager::getInstance()->writeBlock(i + 413, block2);
         if (i == 0) {
@@ -118,7 +118,7 @@ void Initializor::initRoot() {
     n.m_modify_time = now;
     n.m_change_time = now;
     DiskBlock inode_block(DiskManager::inode_block_offset);
-    inode_block.setData(n.dump());
+    inode_block.setData(n.dump(), DiskManager::inode_size);
     DiskManager::getInstance()->writeBlock(DiskManager::inode_block_offset, inode_block);
 
     // init dir file of root path
