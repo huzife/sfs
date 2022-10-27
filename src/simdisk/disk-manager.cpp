@@ -119,22 +119,73 @@ std::shared_ptr<IndexNode> DiskManager::getIndexNode(int id) {
 }
 
 std::shared_ptr<File> DiskManager::getFile(std::shared_ptr<IndexNode> inode) {
+    std::shared_ptr<File> ret;
     int size = inode->m_size;
     int subs = inode->m_subs;
+
     if (inode->m_type == FileType::DIRECTORY) {
-        auto ret = std::make_shared<DirFile>(size, subs);
-        std::shared_ptr<char[]> buffer(new char[size]);
-        int i = 0;
-        int cur = inode->m_location;
-        while (cur != -1) {
-            readBlock(cur).getData(buffer, i * DiskManager::block_size);
-            i++;
-            cur = m_fat[cur];
-        }
-        ret->load(buffer);
-        return ret;
+        ret = std::make_shared<DirFile>(size, subs);
     }
-    else
-        auto ret = std::make_shared<DataFile>(expandSize(size));
-        return nullptr;
+    else {
+        size = expandSize(size);
+        ret = std::make_shared<DataFile>(size);
+    }
+
+    std::shared_ptr<char[]> buffer(new char[size]);
+    int i = 0;
+    int cur = inode->m_location;
+    while (cur != -1) {
+        readBlock(cur + DiskManager::file_block_offset).getData(buffer, i * DiskManager::block_size);
+        i++;
+        cur = m_fat[cur];
+    }
+    ret->load(buffer);
+    
+    return ret;
+}
+
+int DiskManager::allocIndexNode() {
+    for (int i = 0; i < m_inode_map.size(); i++) {
+        if (!m_inode_map.test(i)) {
+            m_inode_map.set(i);
+            return i;
+        }
+    }
+
+    return -1; // return -1 if there is no free index node
+}
+
+int DiskManager::allocFileBlock(int n) {
+    std::vector<int> blocks;
+    for (int i = 0; i < m_block_map.size(); i++) {
+        if (!m_block_map.test(i)) {
+            blocks.emplace_back(i);
+            if (--n == 0) break;
+        }
+    }
+
+    if (n > 0) {
+        for (int j = 0; j < blocks.size() - 1; j++) {
+            m_block_map.set(blocks[j]);
+            m_fat[blocks[j]] = blocks[j + 1];
+        }
+        m_block_map.set(blocks.back());
+        return blocks.front();
+    }
+
+    return -1; // return -1 if there is no enough free block
+}
+
+void DiskManager::freeIndexNode(int id) {
+    m_inode_map.reset(id);
+}
+
+void DiskManager::freeFlieBlock(int id) {
+    int cur = id;
+    while (cur != -1) {
+        int next = m_fat[cur];
+        m_fat[cur] = -1;
+        m_block_map.reset(cur);
+        cur = next;
+    }
 }

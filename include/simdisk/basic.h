@@ -71,6 +71,15 @@ class AllocMap : public Data {
 public:
     std::bitset<N> m_map;
 
+    // overload some function provide by bitset
+    void set() { m_map.set(); }
+    void set(size_t pos, bool val = true) { m_map.set(N - pos - 1, val); }
+    void reset() { m_map.reset(); }
+    void reset(size_t pos) { m_map.reset(N - pos - 1); }
+    bool test(size_t pos) { return m_map.test(N - pos - 1); }
+    size_t size() { return m_map.size(); }
+    std::bitset<N>::reference operator[](size_t pos) { return m_map[N - pos - 1]; }
+
     // get the size that this map takes up in disk, which is a multiple of size of a block
     int getSize() {
         int size = sizeof(m_map);
@@ -78,14 +87,6 @@ public:
             return size;
         return (size / DiskBlock::byte_size + 1) * DiskBlock::byte_size;
     }
-
-    // overload some function provide by bitset
-    void set() { m_map.set(); }
-    void set(size_t pos, bool val = true) { m_map.set(N - pos - 1, val); }
-    void reset() { m_map.reset(); }
-    void reset(size_t pos) { m_map.reset(N - pos - 1); }
-    bool test(size_t pos) { return m_map.test(N - pos - 1); }
-    std::bitset<N>::reference operator[](size_t pos) { return m_map[N - pos - 1]; }
 
     std::shared_ptr<char[]> dump() override {
         int s = getSize();

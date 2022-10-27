@@ -131,6 +131,7 @@ void Initializor::initRoot() {
     temp.m_rec_len = 7 + temp.m_name_len;
     d.m_parent = temp;
     d.m_current = temp;
+
     DiskBlock file_block(DiskManager::file_block_offset);
     file_block.setData(d.dump(), 0);
     DiskManager::getInstance()->writeBlock(DiskManager::file_block_offset, file_block);

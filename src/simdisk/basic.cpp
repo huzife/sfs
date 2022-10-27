@@ -121,6 +121,7 @@ void DataFile::load(std::shared_ptr<char[]> buffer) {
 std::shared_ptr<char[]> DirFile::dump() {
     std::shared_ptr<char[]> ret(new char[m_size]);
     int offset = 0;
+
     memcpy(ret.get(), m_parent.dump().get(), m_parent.m_rec_len);
     offset += m_parent.m_rec_len;
     memcpy(ret.get() + offset, m_current.dump().get(), m_current.m_rec_len);
@@ -147,7 +148,6 @@ void DirFile::load(std::shared_ptr<char[]> buffer) {
     memcpy(temp.get(), buffer.get() + offset, len);
     m_current.load(temp);
     offset += len;
-
     // m_dirs
     // actually size here means the number of subdirectories
     int cnt = 2;

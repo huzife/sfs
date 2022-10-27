@@ -13,6 +13,7 @@
 
 // there can only be one disk manager, so I use singleton mode
 class DiskManager {
+    friend class Initializor;
 public:
     // define the constants use in building the file system
     static constexpr int disk_size = 100 * 1024 * 1024;             // 100 MiB space
@@ -42,13 +43,17 @@ private:
 public:
     static std::shared_ptr<DiskManager> getInstance();
 
-    DiskBlock readBlock(int id);
-
-    void writeBlock(int id, DiskBlock &block);
-
     void initDisk();
 
     void boot();
+
+    // this is used for testing
+    void test();
+
+private:
+    DiskBlock readBlock(int id);
+
+    void writeBlock(int id, DiskBlock &block);
 
     void loadFAT();
 
@@ -66,8 +71,13 @@ public:
 
     std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
 
-    // this is used for testing
-    void test();
+    int allocIndexNode();
+
+    int allocFileBlock(int n);
+
+    void freeIndexNode(int id);
+
+    void freeFlieBlock(int id);
 
 private:
     DiskManager();
