@@ -140,7 +140,7 @@ std::shared_ptr<File> DiskManager::getFile(std::shared_ptr<IndexNode> inode) {
         cur = m_fat[cur];
     }
     ret->load(buffer);
-    
+
     return ret;
 }
 
@@ -188,4 +188,23 @@ void DiskManager::freeFlieBlock(int id) {
         m_block_map.reset(cur);
         cur = next;
     }
+}
+
+std::vector<std::string> DiskManager::splitPath(std::string path) {
+    std::vector<std::string> dirs;
+    int l = 1;
+
+    if (path[0] == '/')
+        dirs.emplace_back("/");
+    else
+        l = 0;
+
+    if (path.back() != '/') path.append("/");
+
+    while (l < path.size()) {
+        int r = path.find("/", l);
+        dirs.emplace_back(path.substr(l, r - l));
+        l = r + 1;
+    }
+    return dirs;
 }

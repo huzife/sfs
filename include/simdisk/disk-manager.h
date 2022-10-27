@@ -79,6 +79,8 @@ private:
 
     void freeFlieBlock(int id);
 
+    std::vector<std::string> splitPath(std::string path);
+
 private:
     DiskManager();
 };
