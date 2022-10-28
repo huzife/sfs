@@ -54,6 +54,7 @@ void DiskManager::boot() {
     loadFAT();
     loadINodeMap();
     loadBlockMap();
+    initCWD();
 }
 
 void DiskManager::loadSuperBlock() {
@@ -88,6 +89,12 @@ void DiskManager::loadBlockMap() {
     m_block_map.load(buffer);
 }
 
+void DiskManager::initCWD() {
+    // m_cwd.m_user = 0;    // m_user is const, initialized when constructed
+    m_cwd.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
+    m_cwd.m_inode = std::make_shared<IndexNode>(getIndexNode(m_super_block.m_root.m_inode));
+}
+
 int DiskManager::expandSize(int size) {
     int cnt = size / DiskManager::block_size;
     if (size % DiskManager::block_size)
@@ -116,6 +123,48 @@ std::shared_ptr<IndexNode> DiskManager::getIndexNode(int id) {
     ret->load(buffer);
 
     return ret;
+}
+
+std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path) {
+    // auto dirs = splitPath(path);
+    // std::shared_ptr<DirectoryEntry> cur_dentry;
+    // std::shared_ptr<IndexNode> cur_inode;
+    // int i;
+
+    // if (dirs[0] == "/") {
+    //     cur_dentry = m_super_block.m_root;
+    //     cur_inode = getIndexNode(cur_dentry.m_inode);
+    //     i = 1;
+    // }
+    // else {
+    //     cur_dentry = m_cwd.m_dentry;
+    //     cur_inode = m_cwd.m_inode;
+    //     i = 0;
+    // }
+
+    // while (i < dirs.size()) {
+    //     std::string d = dirs[i];
+    //     auto file = std::dynamic_pointer_cast<DirFile>(getFile(cur_inode));
+    //     if (d == ".")
+    //         cur_dentry = file->m_current;
+    //     else if (d == "..")
+    //         cur_dentry = file->m_parent;
+    //     else {
+    //         bool exist = false;
+    //         for (auto sub : file->m_dirs) {
+    //             if (d == sub.m_filename) {
+    //                 cur_dentry = sub;
+    //                 exist = true;
+    //                 break;
+    //             }
+    //         }
+    //         if (!exist) {
+    //             std::cerr << "error: No such file or directory" << std::endl;
+    //             return;
+    //         }
+    //     }
+    //     cur_inode = getIndexNode(cur_dentry.m_inode);
+    // }
 }
 
 std::shared_ptr<File> DiskManager::getFile(std::shared_ptr<IndexNode> inode) {
@@ -207,4 +256,9 @@ std::vector<std::string> DiskManager::splitPath(std::string path) {
         l = r + 1;
     }
     return dirs;
+}
+
+// commands
+
+void DiskManager::cd(std::string path) {
 }

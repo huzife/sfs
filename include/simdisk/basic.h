@@ -210,4 +210,14 @@ public:
     void load(std::shared_ptr<char[]> buffer) override;
 };
 
+// current working directories
+class CWD {
+public:
+    const int m_user;
+    std::shared_ptr<DirectoryEntry> m_dentry;
+    std::shared_ptr<IndexNode> m_inode;
+
+    CWD(int user = 0) : m_user(user) {}
+};
+
 #endif // __BASIC_H
