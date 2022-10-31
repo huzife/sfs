@@ -11,34 +11,34 @@ class DiskManager;
 
 class Initializor {
 private:
-    std::string m_path;
-    const int m_block_size;
-    const int m_block_count;
+	std::string m_path;
+	const int m_block_size;
+	const int m_block_count;
 
 public:
-    // Initializor();
+	// Initializor();
 
-    Initializor(std::string path, int block_size, int block_count)
-        : m_path(path), m_block_size(block_size), m_block_count(block_count) {}
+	Initializor(std::string path, int block_size, int block_count)
+		: m_path(path), m_block_size(block_size), m_block_count(block_count) {}
 
-    void setWriteBlock(void (*writeBlock)(int, DiskBlock));
+	void setWriteBlock(void (*writeBlock)(int, DiskBlock));
 
-    void init(); // initialized file system
+	void init(); // initialized file system
 
 private:
-    bool exist(); // check if the file system is exists
+	bool exist(); // check if the file system is exists
 
-    void create(); // create file system
+	void create(); // create file system
 
-    void format(); // format the disk
+	void format(); // format the disk
 
-    void initFAT(); // initialize the FAT
+	void initFAT(); // initialize the FAT
 
-    void initSuperBlock(); // initialize the super block
+	void initSuperBlock(); // initialize the super block
 
-    void initAllocMap(); // initialize the allocation map of block and inode
+	void initAllocMap(); // initialize the allocation map of block and inode
 
-    void initRoot(); // initialize inode and dir file of root path
+	void initRoot(); // initialize inode and dir file of root path
 };
 
 #endif // __INITIALIZOR_H

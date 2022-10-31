@@ -10,11 +10,17 @@ if(CMAKE_COMPILER_IS_GNUCXX)
     message(STATUS "optional: -std=c++20")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
+set(COMMAND_SOURCE
+    src/simdisk/command/cd.cpp
+    src/simdisk/command/dir.cpp
+)
+
 set(SIMDISK_SOURCE
     src/simdisk/main.cpp
     src/simdisk/initializor.cpp
     src/simdisk/disk-manager.cpp
     src/simdisk/basic.cpp
+    ${COMMAND_SOURCE}
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
