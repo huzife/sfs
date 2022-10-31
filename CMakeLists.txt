@@ -11,6 +11,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(COMMAND_SOURCE
+    src/simdisk/command/info.cpp
     src/simdisk/command/cd.cpp
     src/simdisk/command/dir.cpp
 )

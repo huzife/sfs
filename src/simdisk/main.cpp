@@ -3,8 +3,9 @@
 #include "simdisk/disk-manager.h"
 
 void DiskManager::test() {
-	char *argv[2] = {"cd", "."};
-	cd(2, argv);
+	// char *argv[2] = {"dir", "-s"};
+	// dir(2, argv);
+	info();
 }
 
 int main(int argc, char *argv[]) {
