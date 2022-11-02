@@ -1,5 +1,4 @@
 #include "simdisk/disk-manager.h"
-#include <getopt.h>
 
 static const struct option long_options[] = {
     {"sub-directories", no_argument, nullptr, 's'},

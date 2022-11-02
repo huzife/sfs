@@ -114,9 +114,10 @@ void Initializor::initRoot() {
     n.m_other_permission = static_cast<Permission>(5); // other permission: r-x
     n.m_owner = 0;                                     // owner: 0(root)
     n.m_size = DiskManager::block_size;                // directory takes up one block at begin
+    n.m_subs = 2;                                      // "." and ".."
+    n.m_blocks = 1;                                    // takes 1 block at first
     n.m_location = 0;                                  // first file block
     n.m_count = 1;                                     // 1 hard link
-    n.m_subs = 2;                                      // "." and ".."
 
     auto now = std::chrono::system_clock::now(); // set up times to now
     n.m_create_time = now;

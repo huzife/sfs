@@ -204,6 +204,10 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
     while (i < dirs.size()) {
         std::string d = dirs[i];
         auto cur_inode = getIndexNode(cur_dentry->m_inode);
+        if (cur_inode->m_type != FileType::DIRECTORY && cur_inode->m_type != FileType::LINK) {
+            std::cerr << cur_dentry->m_filename << ": Not a directory" << std::endl;
+            return nullptr;
+        }
         auto file = std::dynamic_pointer_cast<DirFile>(getFile(cur_inode));
         if (d == ".")
             cur_dentry = std::make_shared<DirectoryEntry>(file->m_current);
@@ -219,7 +223,7 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
                 }
             }
             if (!exist) {
-                std::cerr << "error: No such file or directory" << std::endl;
+                std::cerr << cur_dentry->m_filename << ": No such file or directory" << std::endl;
                 return nullptr;
             }
         }
@@ -231,14 +235,13 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
 
 std::shared_ptr<File> DiskManager::getFile(std::shared_ptr<IndexNode> inode) {
     std::shared_ptr<File> ret;
-    int size = inode->m_size;
+    int size = inode->m_blocks * DiskManager::block_size;
     int subs = inode->m_subs;
 
     if (inode->m_type == FileType::DIRECTORY) {
         ret = std::make_shared<DirFile>(size, subs);
     }
     else {
-        size = expandedSize(size);
         ret = std::make_shared<DataFile>(size);
     }
 
@@ -279,12 +282,16 @@ int DiskManager::getDirSize(std::shared_ptr<IndexNode> inode) {
 }
 
 int DiskManager::expandFileSize(std::shared_ptr<IndexNode> inode, int size) {
-    int origin_size = inode->m_type == FileType::DIRECTORY ? getDirSize(inode) : inode->m_size;
-    int temp_size = origin_size % DiskManager::block_size + size;
-    int need_blocks = temp_size / DiskManager::block_size;
+    bool is_dir = inode->m_type == FileType::DIRECTORY;
+    int origin_size = is_dir ? getDirSize(inode) : inode->m_size;
+    int new_size = origin_size + size;
+    int need_blocks = (new_size - inode->m_blocks * DiskManager::block_size) / DiskManager::block_size;
+
     if (need_blocks > 0) {
         expandBlock(inode->m_location + DiskManager::file_block_offset, need_blocks);
+        inode->m_blocks += need_blocks;
     }
+    inode->m_size = is_dir ? inode->m_blocks * DiskManager::block_size : new_size;
 
     return need_blocks;
 }
@@ -388,7 +395,7 @@ DiskManager::cfp DiskManager::getFuncPtr(std::string command_name) {
     if (command_name == "dir") return &DiskManager::dir;
     if (command_name == "md") return &DiskManager::md;
     // if (command_name == "rd") return &DiskManager::rd;
-    // if (command_name == "newfile") return &DiskManager::newfile;
+    if (command_name == "newfile") return &DiskManager::newfile;
     // if (command_name == "cat") return &DiskManager::cat;
     // if (command_name == "copy") return &DiskManager::copy;
     // if (command_name == "del") return &DiskManager::del;

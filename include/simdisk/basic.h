@@ -125,9 +125,10 @@ public:
 	Permission m_other_permission;                       // other permission
 	int16_t m_owner;                                     // owner
 	int m_size;                                          // file size(Byte)
+	int m_subs;                                          // number of sub directories
+	int m_blocks;										 // number of block the file takes
 	int m_location;                                      // file location on disk
 	int m_count;                                         // hard link count
-	int m_subs;                                          // number of sub directories
 	std::chrono::system_clock::time_point m_create_time; // file create time
 	std::chrono::system_clock::time_point m_access_time; // last access time
 	std::chrono::system_clock::time_point m_modify_time; // last modify time

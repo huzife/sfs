@@ -9,6 +9,7 @@
 #include <memory>
 #include <string>
 #include <assert.h>
+#include <getopt.h>
 #include <functional>
 #include <algorithm>
 #include "simdisk/initializor.h"

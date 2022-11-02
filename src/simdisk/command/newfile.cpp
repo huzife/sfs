@@ -3,7 +3,7 @@
 static const struct option long_options[] = {
     {nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::md(int argc, char *argv[]) {
+int DiskManager::newfile(int argc, char *argv[]) {
     // get options
     int ch;
     while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
@@ -72,12 +72,12 @@ int DiskManager::md(int argc, char *argv[]) {
 
     // create index node
     std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>();
-    new_inode->m_type = FileType::DIRECTORY;
+    new_inode->m_type = FileType::NORMAL;
     new_inode->m_owner_permission = static_cast<Permission>(7);
     new_inode->m_other_permission = static_cast<Permission>(5);
     new_inode->m_owner = 0;
-    new_inode->m_size = DiskManager::block_size;
-    new_inode->m_subs = 2;
+    new_inode->m_size = 0;
+    new_inode->m_subs = 1;
     new_inode->m_blocks = 1;
     new_inode->m_location = allocFileBlock(1);
     new_inode->m_count = 1;
@@ -89,9 +89,7 @@ int DiskManager::md(int argc, char *argv[]) {
     writeIndexNode(new_dentry.m_inode, new_inode);
 
     // create file
-    auto new_file = std::make_shared<DirFile>(new_inode->m_size, new_inode->m_subs);
-    new_file->m_parent = *dentry;
-    new_file->m_current = new_dentry;
+    auto new_file = std::make_shared<DataFile>(new_inode->m_blocks * DiskManager::block_size);
     writeFile(new_inode, new_file);
 
     return 0;
