@@ -98,7 +98,7 @@ std::string IndexNode::PermissionToStr(Permission p) {
 }
 
 bool IndexNode::PermissionCheck(Permission p, Permission r) {
-	return static_cast<int8_t>(p) | static_cast<int8_t>(r);
+	return static_cast<int8_t>(p) & static_cast<int8_t>(r);
 }
 
 std::shared_ptr<char[]> IndexNode::dump() {

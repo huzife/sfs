@@ -20,12 +20,17 @@ int DiskManager::dir(int argc, char *argv[]) {
     }
 
     std::string path;
-    if (optind == argc)
+    std::shared_ptr<DirectoryEntry> dentry;
+    if (optind == argc) {
         path = m_cwd.m_dentry->m_filename;
-    else
+        dentry = m_cwd.m_dentry;
+    }
+    else {
         path = argv[optind];
+        dentry = getDirectoryEntry(path);
+    }
 
-    auto dentry = getDirectoryEntry(path);
+    if (dentry == nullptr) return -1;
     auto inode = getIndexNode(dentry->m_inode);
     std::vector<std::shared_ptr<IndexNode>> dirs;
     std::vector<std::string> names;
@@ -81,17 +86,17 @@ int DiskManager::dir(int argc, char *argv[]) {
 
     // print
     for (int i = 0; i < dirs.size(); i++) {
-        std::cout
-            << IndexNode::FileTypeToStr(dirs[i]->m_type)
-            << IndexNode::PermissionToStr(dirs[i]->m_owner_permission)
-            << IndexNode::PermissionToStr(dirs[i]->m_other_permission)
-            << std::setiosflags(std::ios::right)
-            << std::setw(max_subs_len) << dirs[i]->m_subs
-            << std::setw(max_owner_len) << dirs[i]->m_owner
-            << std::setw(max_size_len) << dirs[i]->m_size
-            << ' ' << timeToDate(dirs[i]->m_modify_time)
-            << ' ' << names[i]
-            << std::endl;
+        std::cout << IndexNode::FileTypeToStr(dirs[i]->m_type)
+                  << IndexNode::PermissionToStr(dirs[i]->m_owner_permission)
+                  << IndexNode::PermissionToStr(dirs[i]->m_other_permission)
+                  << std::setiosflags(std::ios::right)
+                  << std::setw(max_subs_len) << dirs[i]->m_subs
+                  << std::setw(max_owner_len) << dirs[i]->m_owner
+                  << std::setw(max_size_len) << dirs[i]->m_size
+                  << std::resetiosflags(std::ios::right)
+                  << ' ' << timeToDate(dirs[i]->m_modify_time)
+                  << ' ' << names[i]
+                  << std::endl;
     }
 
     return 0;

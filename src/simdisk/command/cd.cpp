@@ -19,11 +19,16 @@ int DiskManager::cd(int argc, char *argv[]) {
         std::cerr << "missing operand" << std::endl;
         return -1;
     }
-    else
-        path = argv[optind];
-    
-    m_cwd.m_dentry = getDirectoryEntry(path);
+
+    path = argv[optind];
+
+    auto dentry = getDirectoryEntry(path);
+    if (dentry == nullptr) return -1;
+
+    m_cwd.m_path = getPath(m_cwd.m_path, path);
+    m_cwd.m_dentry = dentry;
     m_cwd.m_inode = getIndexNode(m_cwd.m_dentry->m_inode);
+    std::cout << "current directory: " << m_cwd.m_path << std::endl;
 
     return 0;
 }

@@ -3,16 +3,22 @@
 #include "simdisk/disk-manager.h"
 
 void DiskManager::test() {
-	// char *argv[2] = {"dir", "-s"};
-	// dir(2, argv);
-	info();
+    std::string command;
+    std::cout << "simdisk> ";
+    while (std::getline(std::cin, command)) {
+        if (command == "exit")
+            break;
+        exec(command);
+        std::cout << "simdisk> ";
+    }
 }
 
 int main(int argc, char *argv[]) {
-	system("clear");
-	auto disk_manager = DiskManager::getInstance();
+    system("clear");
+    auto disk_manager = std::make_shared<DiskManager>();
+    disk_manager->start();
 
-	disk_manager->test();
+    disk_manager->test();
 
-	return 0;
+    return 0;
 }

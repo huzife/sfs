@@ -220,6 +220,7 @@ public:
 class CWD {
 public:
 	const int m_user;
+	std::string m_path;
 	std::shared_ptr<DirectoryEntry> m_dentry;
 	std::shared_ptr<IndexNode> m_inode;
 

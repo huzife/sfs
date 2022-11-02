@@ -2,6 +2,7 @@
 #define __DISK_MANAGER_H
 
 #include <iostream>
+#include <sstream>
 #include <iomanip>
 #include <fstream>
 #include <unistd.h>
@@ -13,110 +14,130 @@
 #include "simdisk/initializor.h"
 #include "simdisk/basic.h"
 
-// there can only be one disk manager, so I use singleton mode
-class DiskManager {
-	friend class Initializor;
-	friend class Operation;
-public:
-	// define the constants use in building the file system
-	static constexpr int disk_size = 100 * 1024 * 1024;             // 100 MiB space
-	static constexpr int block_size = 1024;                         // 1 KiB per block
-	static constexpr int block_count = disk_size / block_size;      // 102400 blocks
-	static constexpr int inode_block_count = 5999;                  // 5999 blocks for index node
-	static constexpr int file_block_count = 95976;                  // 95976 blocks for file
-	static constexpr int inode_block_offset = 425;                  // first inode block id is 425
-	static constexpr int file_block_offset = 6424;                  // first file block id is 6424
-	static constexpr int fat_size = block_count * 4;                // FAT takes up 409600 Bytes
-	static constexpr int fat_block_count = fat_size / block_size;   // FAT takes up 400 blocks
-	static constexpr int super_block_id = 0;                        // super block is 400
-	static constexpr int inode_size = 64;                           // 64 Byte per index node
-	static constexpr int inode_per_block = block_size / inode_size; // 16 inode per block
-
-private:
-	static std::shared_ptr<DiskManager> instance;
-
-	bool m_is_on;
-
-	std::string m_disk_path;
-	std::unique_ptr<Initializor> m_initializor;
-
-	SuperBlock m_super_block;
-	FAT m_fat;
-	AllocMap<file_block_count> m_inode_map;
-	AllocMap<file_block_count> m_block_map;
-	CWD m_cwd;
+class DiskManager : public std::enable_shared_from_this<DiskManager> {
+    friend class Initializor;
 
 public:
-	static std::shared_ptr<DiskManager> getInstance();
+    // define the constants use in building the file system
+    static constexpr int disk_size = 100 * 1024 * 1024;             // 100 MiB space
+    static constexpr int block_size = 1024;                         // 1 KiB per block
+    static constexpr int block_count = disk_size / block_size;      // 102400 blocks
+    static constexpr int inode_block_count = 5999;                  // 5999 blocks for index node
+    static constexpr int file_block_count = 95976;                  // 95976 blocks for file
+    static constexpr int inode_block_offset = 425;                  // first inode block id is 425
+    static constexpr int file_block_offset = 6424;                  // first file block id is 6424
+    static constexpr int fat_size = block_count * 4;                // FAT takes up 409600 Bytes
+    static constexpr int fat_block_count = fat_size / block_size;   // FAT takes up 400 blocks
+    static constexpr int super_block_id = 0;                        // super block is 0
+    static constexpr int inode_size = 64;                           // 64 Byte per index node
+    static constexpr int inode_per_block = block_size / inode_size; // 16 inode per block
 
-	~DiskManager();
-
-	// this is used for testing
-	void test();
+    using cfp = int (DiskManager::*)(int, char *[]);
+    // typedef int (DiskManager::*cfp)(int, char **);
 
 private:
-	DiskManager();
+    static std::shared_ptr<DiskManager> instance;
 
-	DiskBlock readBlock(int id);
+    bool m_is_on;
 
-	void initDisk();
+    std::string m_disk_path;
 
-	void boot();
+    SuperBlock m_super_block;
+    FAT m_fat;
+    AllocMap<file_block_count> m_inode_map;
+    AllocMap<file_block_count> m_block_map;
+    CWD m_cwd;
 
-	void shutdown();
+public:
+    DiskManager();
 
-	void writeBlock(int id, DiskBlock &block);
+    ~DiskManager();
 
-	void loadSuperBlock();
+    void start();
 
-	void loadFAT();
+    int expandedSize(int size);
 
-	void loadINodeMap();
+    // this is used for testing
+    void test();
 
-	void loadBlockMap();
+private:
+    DiskBlock readBlock(int id);
 
-	void saveSuperBlock();
+    void writeBlock(int id, DiskBlock &block);
 
-	void saveFAT();
+    void initDisk();
 
-	void saveINodeMap();
+    void boot();
 
-	void saveBlockMap();
+    void shutdown();
 
-	void initCWD();
+    void loadSuperBlock();
 
-	int expandSize(int size);
+    void loadFAT();
 
-	std::string timeToDate(const std::chrono::system_clock::time_point &time);
+    void loadINodeMap();
 
-	std::shared_ptr<IndexNode> getIndexNode(int id);
+    void loadBlockMap();
 
-	std::shared_ptr<DirectoryEntry> getDirectoryEntry(std::string path);
+    void saveSuperBlock();
 
-	std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
+    void saveFAT();
 
-	int allocIndexNode();
+    void saveINodeMap();
 
-	int allocFileBlock(int n);
+    void saveBlockMap();
 
-	void freeIndexNode(int id);
+    void initCWD();
 
-	void freeFlieBlock(int id);
+    std::string timeToDate(const std::chrono::system_clock::time_point &time);
 
-	std::vector<std::string> splitPath(std::string path);
+    std::shared_ptr<IndexNode> getIndexNode(int id);
 
-	// commands
-	int info();
-	int cd(int argc, char *argv[]);
-	int dir(int argc, char *argv[]);
-	int md();
-	int rd();
-	int newfile();
-	int cat();
-	int copy();
-	int del();
-	int check();
+    void writeIndexNode(int id, std::shared_ptr<IndexNode> inode);
 
+    std::shared_ptr<DirectoryEntry> getDirectoryEntry(std::string path);
+
+    std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
+
+    void writeFile(std::shared_ptr<IndexNode> inode, std::shared_ptr<File> file);
+
+    int getDirSize(std::shared_ptr<IndexNode> inode);
+
+    int expandFileSize(std::shared_ptr<IndexNode> inode, int size);
+
+    int getLastBlock(int id);
+
+    int allocIndexNode();
+
+    int allocFileBlock(int n);
+
+    void expandBlock(int id, int n);
+
+    void freeIndexNode(int id);
+
+    void freeFlieBlock(int id);
+
+    int exec(std::string command);
+
+    cfp getFuncPtr(std::string command_name);
+
+    std::vector<std::string> splitArgs(std::string command);
+
+    std::vector<std::string> splitPath(std::string path);
+
+	std::string getPath(std::string cur, std::string path);
+
+    // commands
+    int info(int argc = 0, char *argv[] = nullptr);
+    int cd(int argc, char *argv[]);
+    int dir(int argc, char *argv[]);
+    int md(int argc, char *argv[]);
+    int rd(int argc, char *argv[]);
+    int newfile(int argc, char *argv[]);
+    int cat(int argc, char *argv[]);
+    int copy(int argc, char *argv[]);
+    int del(int argc, char *argv[]);
+    int check(int argc, char *argv[]);
 };
 
 #endif // __DISK_MANAGER_H

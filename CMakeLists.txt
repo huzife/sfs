@@ -14,6 +14,7 @@ set(COMMAND_SOURCE
     src/simdisk/command/info.cpp
     src/simdisk/command/cd.cpp
     src/simdisk/command/dir.cpp
+    src/simdisk/command/md.cpp
 )
 
 set(SIMDISK_SOURCE
