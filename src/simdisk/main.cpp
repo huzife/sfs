@@ -13,12 +13,13 @@ void DiskManager::test() {
     }
 }
 
+int f();
+
 int main(int argc, char *argv[]) {
     system("clear");
     auto disk_manager = std::make_shared<DiskManager>();
     disk_manager->start();
 
     disk_manager->test();
-
     return 0;
 }

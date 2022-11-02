@@ -137,7 +137,7 @@ std::shared_ptr<char[]> SuperBlock::dump() {
 
 void SuperBlock::load(std::shared_ptr<char[]> buffer) {
 	memcpy(reinterpret_cast<char *>(this) + sizeof(Data), buffer.get(), 48);
-	int16_t root_size = *(buffer.get() + 52);
+	uint16_t root_size = *(uint16_t *)(buffer.get() + 52);
 	std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
 	memcpy(temp.get(), buffer.get() + 48, root_size);
 	m_root.load(temp);
@@ -162,6 +162,7 @@ std::shared_ptr<char[]> DirFile::dump() {
 	offset += m_parent.m_rec_len;
 	memcpy(ret.get() + offset, m_current.dump().get(), m_current.m_rec_len);
 	offset += m_current.m_rec_len;
+
 	for (auto d : m_dirs) {
 		memcpy(ret.get() + offset, d.dump().get(), d.m_rec_len);
 		offset += d.m_rec_len;
@@ -172,23 +173,22 @@ std::shared_ptr<char[]> DirFile::dump() {
 
 void DirFile::load(std::shared_ptr<char[]> buffer) {
 	int offset = 0;
-	int16_t len;
+	uint16_t len;
 	std::shared_ptr<char[]> temp(new char[DiskManager::block_size]);
 	// m_parent
-	len = *(buffer.get() + offset + 4);
+	len = *(uint16_t *)(buffer.get() + offset + 4);
 	memcpy(temp.get(), buffer.get() + offset, len);
 	m_parent.load(temp);
 	offset += len;
 	// m_current
-	len = *(buffer.get() + offset + 4);
+	len = *(uint16_t *)(buffer.get() + offset + 4);
 	memcpy(temp.get(), buffer.get() + offset, len);
 	m_current.load(temp);
 	offset += len;
 	// m_dirs
-	// actually size here means the number of subdirectories
 	int cnt = 2;
 	while (cnt < m_subs) {
-		len = *(buffer.get() + offset + 4);
+		len = *(uint16_t *)(buffer.get() + offset + 4);
 		memcpy(temp.get(), buffer.get() + offset, len);
 		DirectoryEntry d;
 		d.load(temp);

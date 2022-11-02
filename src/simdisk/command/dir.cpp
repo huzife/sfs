@@ -37,7 +37,6 @@ int DiskManager::dir(int argc, char *argv[]) {
     // get the index nodes of dirs
     if (sub_directories) {
         auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
-
         dirs.emplace_back(getIndexNode(file->m_current.m_inode));
         names.emplace_back(".");
         dirs.emplace_back(getIndexNode(file->m_parent.m_inode));
@@ -51,7 +50,6 @@ int DiskManager::dir(int argc, char *argv[]) {
         dirs.emplace_back(inode);
         names.emplace_back(path);
     }
-
     // format output
     // get max length of m_subs
     int max_subs_len =

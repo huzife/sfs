@@ -15,7 +15,7 @@ int DiskManager::cd(int argc, char *argv[]) {
 
     std::string path;
     if (optind == argc) {
-        std::cerr << "missing operand" << std::endl;
+        std::cerr << "cd: missing operand" << std::endl;
         return -1;
     }
 

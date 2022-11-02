@@ -288,7 +288,7 @@ int DiskManager::expandFileSize(std::shared_ptr<IndexNode> inode, int size) {
     int need_blocks = (new_size - inode->m_blocks * DiskManager::block_size) / DiskManager::block_size;
 
     if (need_blocks > 0) {
-        expandBlock(inode->m_location + DiskManager::file_block_offset, need_blocks);
+        expandBlock(inode->m_location, need_blocks);
         inode->m_blocks += need_blocks;
     }
     inode->m_size = is_dir ? inode->m_blocks * DiskManager::block_size : new_size;
@@ -332,7 +332,7 @@ int DiskManager::allocFileBlock(int n) {
     if (cnt == 0) {
         for (int j = 0; j < blocks.size() - 1; j++) {
             m_block_map.set(blocks[j]);
-            m_fat[blocks[j]] = blocks[j + 1];
+            m_fat[blocks[j] + DiskManager::file_block_offset] = blocks[j + 1] + DiskManager::file_block_offset;
         }
         m_block_map.set(blocks.back());
         m_super_block.m_free_block -= n;
@@ -348,7 +348,7 @@ void DiskManager::expandBlock(int id, int n) {
         std::cerr << "error: no enough blocks" << std::endl;
         return;
     }
-    m_fat[getLastBlock(id)] = first_new_block;
+    m_fat[getLastBlock(id + DiskManager::file_block_offset)] = first_new_block + DiskManager::file_block_offset;
 }
 
 void DiskManager::freeIndexNode(int id) {
@@ -357,7 +357,7 @@ void DiskManager::freeIndexNode(int id) {
 }
 
 void DiskManager::freeFlieBlock(int id) {
-    int cur = id;
+    int cur = id + DiskManager::file_block_offset;
     int cnt = 0;
     while (cur != -1) {
         int next = m_fat[cur];
@@ -398,7 +398,7 @@ DiskManager::cfp DiskManager::getFuncPtr(std::string command_name) {
     if (command_name == "newfile") return &DiskManager::newfile;
     // if (command_name == "cat") return &DiskManager::cat;
     // if (command_name == "copy") return &DiskManager::copy;
-    // if (command_name == "del") return &DiskManager::del;
+    if (command_name == "del") return &DiskManager::del;
     // if (command_name == "check") return &DiskManager::check;
 
     return nullptr;

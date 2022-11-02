@@ -15,22 +15,22 @@ int DiskManager::newfile(int argc, char *argv[]) {
 
     std::string path;
     if (optind == argc) {
-        std::cerr << "missing operand" << std::endl;
+        std::cerr << "newfile: missing operand" << std::endl;
         return -1;
     }
 
     path = argv[optind];
 
-    int start = path.back() == '/' ? path.size() - 2 : path.size() - 1;
-    int pos = path.find_last_of('/', start);
+    int end = path.find_last_not_of('/');
+    int pos = path.find_last_of('/', end);
     std::string parent_dir, name;
     if (pos == UINT64_MAX) {
         parent_dir = ".";
-        name = path;
+        name = path.substr(0, end + 1);
     }
     else {
         parent_dir = path.substr(0, pos);
-        name = path.substr(pos + 1, start - pos + 1);
+        name = path.substr(pos + 1, end - pos);
     }
 
     if (name.size() > m_super_block.m_filename_maxbytes) {
