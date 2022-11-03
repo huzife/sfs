@@ -163,7 +163,7 @@ std::shared_ptr<char[]> DirFile::dump() {
 	memcpy(ret.get() + offset, m_current.dump().get(), m_current.m_rec_len);
 	offset += m_current.m_rec_len;
 
-	for (auto d : m_dirs) {
+	for (auto &[name, d] : m_dirs) {
 		memcpy(ret.get() + offset, d.dump().get(), d.m_rec_len);
 		offset += d.m_rec_len;
 	}
@@ -192,7 +192,7 @@ void DirFile::load(std::shared_ptr<char[]> buffer) {
 		memcpy(temp.get(), buffer.get() + offset, len);
 		DirectoryEntry d;
 		d.load(temp);
-		m_dirs.emplace_back(d);
+		m_dirs[d.m_filename] = d;
 		offset += len;
 		cnt++;
 	}

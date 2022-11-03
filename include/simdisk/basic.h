@@ -5,6 +5,7 @@
 #include <bitset>
 #include <string>
 #include <vector>
+#include <map>
 #include <cstdlib>
 #include <chrono>
 #include <string.h>
@@ -213,7 +214,7 @@ class DirFile : public File {
 public:
     DirectoryEntry m_parent;
     DirectoryEntry m_current;
-    std::vector<DirectoryEntry> m_dirs;
+    std::map<std::string, DirectoryEntry> m_dirs;
 
     DirFile(int size, int subs = 2) : File(size, subs), m_parent(".."), m_current(".") {}
 

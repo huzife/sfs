@@ -5,6 +5,7 @@ static const struct option long_options[] = {
     {nullptr, no_argument, nullptr, 0}};
 
 int DiskManager::dir(int argc, char *argv[]) {
+    optind = 0;
     // get options
     int ch;
     bool sub_directories = false;
@@ -41,7 +42,7 @@ int DiskManager::dir(int argc, char *argv[]) {
         names.emplace_back(".");
         dirs.emplace_back(getIndexNode(file->m_parent.m_inode));
         names.emplace_back("..");
-        for (auto d : file->m_dirs) {
+        for (auto &[name, d] : file->m_dirs) {
             dirs.emplace_back(getIndexNode(d.m_inode));
             names.emplace_back(d.m_filename);
         }

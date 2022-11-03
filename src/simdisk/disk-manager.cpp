@@ -208,24 +208,19 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
             std::cerr << cur_dentry->m_filename << ": Not a directory" << std::endl;
             return nullptr;
         }
+
         auto file = std::dynamic_pointer_cast<DirFile>(getFile(cur_inode));
         if (d == ".")
             cur_dentry = std::make_shared<DirectoryEntry>(file->m_current);
         else if (d == "..")
             cur_dentry = std::make_shared<DirectoryEntry>(file->m_parent);
+        else if (file->m_dirs.find(d) != file->m_dirs.end()) {
+            auto sub = file->m_dirs.find(d)->second;
+            cur_dentry = std::make_shared<DirectoryEntry>(sub);
+        }
         else {
-            bool exist = false;
-            for (auto sub : file->m_dirs) {
-                if (d == sub.m_filename) {
-                    cur_dentry = std::make_shared<DirectoryEntry>(sub);
-                    exist = true;
-                    break;
-                }
-            }
-            if (!exist) {
-                std::cerr << cur_dentry->m_filename << ": No such file or directory" << std::endl;
-                return nullptr;
-            }
+            std::cerr << cur_dentry->m_filename << ": No such file or directory" << std::endl;
+            return nullptr;
         }
         i++;
     }
@@ -274,7 +269,7 @@ void DiskManager::writeFile(std::shared_ptr<IndexNode> inode, std::shared_ptr<Fi
 int DiskManager::getDirSize(std::shared_ptr<IndexNode> inode) {
     auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
     int ret = file->m_current.m_rec_len + file->m_parent.m_rec_len;
-    for (auto d : file->m_dirs) {
+    for (auto &[name, d] : file->m_dirs) {
         ret += d.m_rec_len;
     }
 
@@ -285,7 +280,8 @@ int DiskManager::expandFileSize(std::shared_ptr<IndexNode> inode, int size) {
     bool is_dir = inode->m_type == FileType::DIRECTORY;
     int origin_size = is_dir ? getDirSize(inode) : inode->m_size;
     int new_size = origin_size + size;
-    int need_blocks = (new_size - inode->m_blocks * DiskManager::block_size) / DiskManager::block_size;
+    int need_size = new_size - inode->m_blocks * DiskManager::block_size;
+    int need_blocks = need_size > 0 ? (need_size - 1) / DiskManager::block_size + 1 : 0;
 
     if (need_blocks > 0) {
         expandBlock(inode->m_location, need_blocks);
@@ -379,27 +375,37 @@ int DiskManager::exec(std::string command) {
         argv[i] = args[i].data();
     }
 
-    auto func = getFuncPtr(args[0]);
+    auto func = getFunc(args[0]);
     if (func == nullptr) {
         std::cerr << "command '" << args[0] << "' not found" << std::endl;
         return 127;
     }
 
-    optind = 0;
-    return (this->*func)(argc, argv);
+    return func(argc, argv);
 }
 
-DiskManager::cfp DiskManager::getFuncPtr(std::string command_name) {
-    if (command_name == "info") return &DiskManager::info;
-    if (command_name == "cd") return &DiskManager::cd;
-    if (command_name == "dir") return &DiskManager::dir;
-    if (command_name == "md") return &DiskManager::md;
-    // if (command_name == "rd") return &DiskManager::rd;
-    if (command_name == "newfile") return &DiskManager::newfile;
-    // if (command_name == "cat") return &DiskManager::cat;
-    // if (command_name == "copy") return &DiskManager::copy;
-    if (command_name == "del") return &DiskManager::del;
-    // if (command_name == "check") return &DiskManager::check;
+std::function<int(int, char **)> DiskManager::getFunc(std::string command_name) {
+    using namespace std::placeholders;
+    if (command_name == "info")
+        return std::bind(&DiskManager::info, this, _1, _2);
+    if (command_name == "cd")
+        return std::bind(&DiskManager::cd, this, _1, _2);
+    if (command_name == "dir")
+        return std::bind(&DiskManager::dir, this, _1, _2);
+    if (command_name == "md")
+        return std::bind(&DiskManager::md, this, _1, _2);
+    if (command_name == "rd")
+        return std::bind(&DiskManager::rd, this, _1, _2, -1, -1);
+    if (command_name == "newfile")
+        return std::bind(&DiskManager::newfile, this, _1, _2);
+    // if (command_name == "cat")
+    //     return std::bind(&DiskManager::cat, this, _1, _2);
+    // if (command_name == "copy")
+    //     return std::bind(&DiskManager::copy, this, _1, _2);
+    if (command_name == "del")
+        return std::bind(&DiskManager::del, this, _1, _2, -1, -1);
+    // if (command_name == "check")
+    //     return std::bind(&DiskManager::check, this, _1, _2);
 
     return nullptr;
 }

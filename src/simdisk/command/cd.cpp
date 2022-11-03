@@ -4,6 +4,7 @@ static const struct option long_options[] = {
     {nullptr, no_argument, nullptr, 0}};
 
 int DiskManager::cd(int argc, char *argv[]) {
+    optind = 0;
     // get options
     int ch;
     while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {

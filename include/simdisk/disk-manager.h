@@ -33,9 +33,6 @@ public:
     static constexpr int inode_size = 64;                           // 64 Byte per index node
     static constexpr int inode_per_block = block_size / inode_size; // 16 inode per block
 
-    using cfp = int (DiskManager::*)(int, char *[]);
-    // typedef int (DiskManager::*cfp)(int, char **);
-
 private:
     static std::shared_ptr<DiskManager> instance;
 
@@ -120,7 +117,7 @@ private:
 
     int exec(std::string command);
 
-    cfp getFuncPtr(std::string command_name);
+    std::function<int(int, char **)> getFunc(std::string command_name);
 
     std::vector<std::string> splitArgs(std::string command);
 
@@ -133,11 +130,11 @@ private:
     int cd(int argc, char *argv[]);
     int dir(int argc, char *argv[]);
     int md(int argc, char *argv[]);
-    int rd(int argc, char *argv[]);
+    int rd(int argc, char *argv[], int inode_id, int block_id);
     int newfile(int argc, char *argv[]);
     int cat(int argc, char *argv[]);
     int copy(int argc, char *argv[]);
-    int del(int argc, char *argv[]);
+    int del(int argc, char *argv[], int inode_id, int block_id);
     int check(int argc, char *argv[]);
 };
 
