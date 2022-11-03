@@ -12,6 +12,7 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(COMMAND_SOURCE
     src/simdisk/command/cd.cpp
+    src/simdisk/command/copy.cpp
     src/simdisk/command/del.cpp
     src/simdisk/command/dir.cpp
     src/simdisk/command/info.cpp

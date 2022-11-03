@@ -82,7 +82,7 @@ std::string IndexNode::FileTypeToStr(FileType type) {
 	case FileType::SOCKET:
 		return "s";
 	}
-	return "";	// unreachable, but received a warning without it
+	return ""; // unreachable, but received a warning without it
 }
 
 std::string IndexNode::PermissionToStr(Permission p) {
