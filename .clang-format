@@ -204,10 +204,10 @@ SpacesInParentheses: false
 SpacesInSquareBrackets: false
 
 # 标准: Cpp03, Cpp11, Auto
-Standard: Cpp11
+Standard: Auto
 
 # tab宽度
 TabWidth: 4
 
-# 使用tab字符: Never, ForIndentation, ForContinuationAndIndentation, Always
-UseTab: Never
+# 使用tab字符: Never, ForIndentation, ForContinuationAndIndentation, AlignWithSpaces, Always
+UseTab: Always
