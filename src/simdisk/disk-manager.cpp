@@ -13,6 +13,7 @@ DiskManager::~DiskManager() {
 void DiskManager::start() {
 	initDisk();
 	boot();
+	listenLogin();
 }
 
 DiskBlock DiskManager::readBlock(int id) {
@@ -401,7 +402,7 @@ std::function<int(int, char **)> DiskManager::getFunc(std::string command_name) 
 	// if (command_name == "cat")
 	//     return std::bind(&DiskManager::cat, this, _1, _2);
 	if (command_name == "copy")
-	    return std::bind(&DiskManager::copy, this, _1, _2);
+		return std::bind(&DiskManager::copy, this, _1, _2);
 	if (command_name == "del")
 		return std::bind(&DiskManager::del, this, _1, _2, -1, -1);
 	// if (command_name == "check")
@@ -471,4 +472,62 @@ std::string DiskManager::getPath(std::string cur, std::string path) {
 	}
 
 	return ret;
+}
+
+void DiskManager::listenLogin() {
+	int msgkey = getpid();
+	Requset req;
+
+	int qid = msgget(msgkey, IPC_CREAT | 0666);
+	std::cout << "create request message queue: " << qid << std::endl;
+
+	// wait for request
+	while (true) {
+		if (msgrcv(qid, &req, Requset::req_size, Requset::req_type, 0) == -1) {
+			std::cerr << "received message failed" << std::endl;
+			return;
+		}
+
+		std::cout << "accept:" << req.pid << std::endl;
+		accept(req.pid, req.uid);
+
+		std::chrono::milliseconds dura(100);
+		std::this_thread::sleep_for(dura);
+	}
+}
+
+void DiskManager::accept(int pid, int uid) {
+	// create share memory
+	int shm_id = shmget(pid, sizeof(ShareMemory), IPC_CREAT | 0777);
+	if (shm_id == -1) {
+		std::cerr << "failed to get share memory" << std::endl;
+		return;
+	}
+
+	// register information
+	ShellInfo shell(uid);
+	shell.m_shm = (ShareMemory *)(shmat(shm_id, nullptr, 0));
+	shell.m_path = "/";
+	shell.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
+	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
+
+	m_shells.insert_or_assign(pid, shell);
+
+	// create a thread
+	std::thread(&DiskManager::run, this, pid).detach();
+}
+
+void DiskManager::run(int pid) {
+	std::string command;
+	auto shm = m_shells[pid].m_shm;
+	while (true) {
+		if (shm->size <= 0) continue;
+		command = shm->buffer;
+		std::cout << pid << " send: " << command << std::endl;
+		shm->size = -1;
+
+		// sleep for 0.1 second, reduce cpu cost
+		std::chrono::milliseconds dura(100);
+		std::this_thread::sleep_for(dura);
+	}
 }

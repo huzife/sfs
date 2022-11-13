@@ -6,8 +6,10 @@ include_directories(include)
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     add_compile_options(-std=c++20)
+    # add_compile_options(-lpthread)
     # add_compile_options(-O2)
     message(STATUS "optional: -std=c++20")
+    # message(STATUS "optional: -lpthread")
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(COMMAND_SOURCE
@@ -29,5 +31,13 @@ set(SIMDISK_SOURCE
     ${COMMAND_SOURCE}
 )
 
+set(SIMSH_SOURCE
+    src/simsh/main.cpp
+    src/simsh/simsh.cpp
+)
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 add_executable(simdisk ${SIMDISK_SOURCE})
+add_executable(simsh ${SIMSH_SOURCE})
+
+target_link_libraries(simdisk pthread)

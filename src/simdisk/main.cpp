@@ -4,12 +4,11 @@
 
 void DiskManager::test() {
 	std::string command;
-	std::cout << "simdisk> ";
-	while (std::getline(std::cin, command)) {
-		if (command == "exit")
-			break;
-		exec(command);
+	while (!std::cin.eof()) {
 		std::cout << "simdisk> ";
+		std::getline(std::cin, command);
+		if (command == "exit") break;
+		exec(command);
 	}
 }
 
@@ -20,6 +19,5 @@ int main(int argc, char *argv[]) {
 	auto disk_manager = std::make_shared<DiskManager>();
 	disk_manager->start();
 
-	disk_manager->test();
 	return 0;
 }

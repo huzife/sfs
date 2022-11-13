@@ -11,6 +11,7 @@
 #include <string.h>
 #include <assert.h>
 #include <iostream> // for debug
+#include "simdisk/communication.h"
 
 class DiskManager;
 
@@ -156,7 +157,7 @@ public:
 
 	DirectoryEntry() = default;
 
-    DirectoryEntry(const DirectoryEntry &) = default;
+	DirectoryEntry(const DirectoryEntry &) = default;
 
 	DirectoryEntry(std::string filename)
 		: m_filename(filename), m_name_len(filename.size()), m_rec_len(7 + m_name_len) {}
@@ -226,14 +227,24 @@ public:
 };
 
 // current working directories
-class CWD {
+class ShellInfo {
 public:
-	const int m_user;
+	int m_user;
+	ShareMemory *m_shm;
 	std::string m_path;
 	std::shared_ptr<DirectoryEntry> m_dentry;
 	std::shared_ptr<IndexNode> m_inode;
 
-	CWD(int user = 0) : m_user(user) {}
+	ShellInfo(int user = 0) : m_user(user) {}
+
+	ShellInfo &operator=(const ShellInfo &s) {
+		m_user = s.m_user;
+		m_shm = s.m_shm;
+		m_path = s.m_path;
+		m_dentry = s.m_dentry;
+		m_inode = s.m_inode;
+		return *this;
+	}
 };
 
 #endif // __BASIC_H

@@ -12,8 +12,14 @@
 #include <getopt.h>
 #include <functional>
 #include <algorithm>
+#include <thread>
+#include <unordered_map>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/msg.h>
 #include "simdisk/initializor.h"
 #include "simdisk/basic.h"
+#include "simdisk/communication.h"
 
 class DiskManager : public std::enable_shared_from_this<DiskManager> {
 	friend class Initializor;
@@ -44,7 +50,9 @@ private:
 	FAT m_fat;
 	AllocMap<file_block_count> m_inode_map;
 	AllocMap<file_block_count> m_block_map;
-	CWD m_cwd;
+	ShellInfo m_cwd;
+
+	std::unordered_map<int, ShellInfo> m_shells;
 
 public:
 	DiskManager();
@@ -124,6 +132,12 @@ private:
 	std::vector<std::string> splitPath(std::string path);
 
 	std::string getPath(std::string cur, std::string path);
+
+	void listenLogin();
+
+	void accept(int pid, int uid);
+
+	void run(int pid);
 
 	// commands
 	int info(int argc = 0, char *argv[] = nullptr);
