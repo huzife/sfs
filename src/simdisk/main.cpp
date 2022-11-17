@@ -8,7 +8,7 @@ void DiskManager::test() {
 		std::cout << "simdisk> ";
 		std::getline(std::cin, command);
 		if (command == "exit") break;
-		exec(command);
+		exec(command, 0);
 	}
 }
 

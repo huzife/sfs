@@ -13,14 +13,14 @@ DiskManager::~DiskManager() {
 void DiskManager::start() {
 	initDisk();
 	boot();
+	checkDir();
 	listenLogin();
 }
 
 DiskBlock DiskManager::readBlock(int id) {
-	std::ifstream ifs(m_disk_path, std::ios::binary | std::ios::in);
+	while (m_is_writing) {}
 
-	if (!ifs.is_open())
-		std::cerr << "could not open disk file" << std::endl;
+	std::ifstream ifs(m_disk_path, std::ios::binary | std::ios::in);
 
 	DiskBlock ret(id);
 	std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
@@ -34,16 +34,18 @@ DiskBlock DiskManager::readBlock(int id) {
 }
 
 void DiskManager::writeBlock(int id, DiskBlock &block) {
-	std::fstream fs(m_disk_path, std::ios::binary | std::ios::in | std::ios::out);
+	while (m_is_writing) {}
+	m_is_writing = true;
 
-	if (!fs.is_open())
-		std::cerr << "could not open disk file" << std::endl;
+	std::fstream fs(m_disk_path, std::ios::binary | std::ios::in | std::ios::out);
 
 	std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
 	block.getData(buffer, 0);
 	fs.seekg(id * DiskManager::block_size);
 	fs.write(buffer.get(), DiskManager::block_size);
 	fs.close();
+
+	m_is_writing = false;
 }
 
 void DiskManager::initDisk() {
@@ -62,6 +64,13 @@ void DiskManager::boot() {
 	loadINodeMap();
 	loadBlockMap();
 	initCWD();
+}
+
+void DiskManager::checkDir() {
+	// check /etc/passwd
+	checkAndCreate("/etc/passwd", FileType::NORMAL);
+	checkAndCreate("/root", FileType::DIRECTORY);
+	checkAndCreate("/home", FileType::DIRECTORY);
 }
 
 void DiskManager::shutdown() {
@@ -141,10 +150,12 @@ void DiskManager::saveBlockMap() {
 }
 
 void DiskManager::initCWD() {
-	// m_cwd.m_user = 0;    // m_user is const, initialized when constructed
-	m_cwd.m_path = "/";
-	m_cwd.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
-	m_cwd.m_inode = getIndexNode(m_super_block.m_root.m_inode);
+	ShellInfo shell;
+	shell.m_path = "/";
+	shell.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
+	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
+
+	m_shells[0] = shell;
 }
 
 int DiskManager::expandedSize(int size) {
@@ -163,6 +174,42 @@ std::string DiskManager::timeToDate(const std::chrono::system_clock::time_point 
 	strftime(buffer, 256, "%Y-%m-%d %H:%M:%S", &p);
 
 	return std::string(buffer);
+}
+
+void DiskManager::checkAndCreate(std::string path, FileType type) {
+	auto dirs = splitPath(path);
+	assert(dirs[0] == "/");
+
+	auto dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
+	int i = 1;
+
+	std::string cur = "/";
+	while (i < dirs.size()) {
+		cur += dirs[i] + "/";
+		auto inode = getIndexNode(dentry->m_inode);
+		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
+
+		if (i == dirs.size() - 1) {
+			if (type == FileType::DIRECTORY) {
+				char *argv[] = {std::string("md").data(), cur.data()};
+				md(2, argv, 0);
+			}
+			else {
+				char *argv[] = {std::string("newfile").data(), cur.data()};
+				newfile(2, argv, 0);
+			}
+			return;
+		}
+
+		if (file->m_dirs.find(dirs[i]) == file->m_dirs.end()) {
+			char *argv[] = {std::string("md").data(), cur.data()};
+			md(2, argv, 0);
+			file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
+		}
+
+		dentry = std::make_shared<DirectoryEntry>(file->m_dirs[dirs[i]]);
+		i++;
+	}
 }
 
 std::shared_ptr<IndexNode> DiskManager::getIndexNode(int id) {
@@ -186,9 +233,9 @@ void DiskManager::writeIndexNode(int id, std::shared_ptr<IndexNode> inode) {
 	writeBlock(block_id, block);
 }
 
-std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path) {
+std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path, int sid) {
 	if (path == "." || path == "./")
-		return m_cwd.m_dentry;
+		return m_shells[sid].m_dentry;
 
 	auto dirs = splitPath(path);
 	std::shared_ptr<DirectoryEntry> cur_dentry;
@@ -199,14 +246,15 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
 		i = 1;
 	}
 	else {
-		cur_dentry = m_cwd.m_dentry;
+		cur_dentry = m_shells[sid].m_dentry;
 		i = 0;
 	}
+
 	while (i < dirs.size()) {
 		std::string d = dirs[i];
 		auto cur_inode = getIndexNode(cur_dentry->m_inode);
 		if (cur_inode->m_type != FileType::DIRECTORY && cur_inode->m_type != FileType::LINK) {
-			std::cerr << cur_dentry->m_filename << ": Not a directory" << std::endl;
+			writeOutput(cur_dentry->m_filename + ": Not a directory", sid);
 			return nullptr;
 		}
 
@@ -220,7 +268,7 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path)
 			cur_dentry = std::make_shared<DirectoryEntry>(sub);
 		}
 		else {
-			std::cerr << cur_dentry->m_filename << ": No such file or directory" << std::endl;
+			writeOutput(cur_dentry->m_filename + ": No such file or directory", sid);
 			return nullptr;
 		}
 		i++;
@@ -285,7 +333,9 @@ int DiskManager::expandFileSize(std::shared_ptr<IndexNode> inode, int size) {
 	int need_blocks = need_size > 0 ? (need_size - 1) / DiskManager::block_size + 1 : 0;
 
 	if (need_blocks > 0) {
-		expandBlock(inode->m_location, need_blocks);
+		if (expandBlock(inode->m_location, need_blocks) == -1) {
+			return -1;
+		}
 		inode->m_blocks += need_blocks;
 	}
 	inode->m_size = is_dir ? inode->m_blocks * DiskManager::block_size : new_size;
@@ -339,13 +389,14 @@ int DiskManager::allocFileBlock(int n) {
 	return -1; // return -1 if there is no enough free block
 }
 
-void DiskManager::expandBlock(int id, int n) {
+int DiskManager::expandBlock(int id, int n) {
 	int first_new_block = allocFileBlock(n);
-	if (first_new_block == -1) {
-		std::cerr << "error: no enough blocks" << std::endl;
-		return;
-	}
+	if (first_new_block == -1)
+		return -1;
+
 	m_fat[getLastBlock(id + DiskManager::file_block_offset)] = first_new_block + DiskManager::file_block_offset;
+
+	return 0;
 }
 
 void DiskManager::freeIndexNode(int id) {
@@ -366,7 +417,7 @@ void DiskManager::freeFlieBlock(int id) {
 	m_super_block.m_free_block += cnt;
 }
 
-int DiskManager::exec(std::string command) {
+int DiskManager::exec(std::string command, int sid) {
 	if (command.empty()) return 0;
 
 	auto args = splitArgs(command);
@@ -378,35 +429,36 @@ int DiskManager::exec(std::string command) {
 
 	auto func = getFunc(args[0]);
 	if (func == nullptr) {
-		std::cerr << "command '" << args[0] << "' not found" << std::endl;
+		std::string out("command '" + args[0] + "' not found");
+		writeOutput(out, sid);
 		return 127;
 	}
 
-	return func(argc, argv);
+	return func(argc, argv, sid);
 }
 
-std::function<int(int, char **)> DiskManager::getFunc(std::string command_name) {
+std::function<int(int, char **, int)> DiskManager::getFunc(std::string command_name) {
 	using namespace std::placeholders;
 	if (command_name == "info")
-		return std::bind(&DiskManager::info, this, _1, _2);
+		return std::bind(&DiskManager::info, this, _1, _2, _3);
 	if (command_name == "cd")
-		return std::bind(&DiskManager::cd, this, _1, _2);
+		return std::bind(&DiskManager::cd, this, _1, _2, _3);
 	if (command_name == "dir")
-		return std::bind(&DiskManager::dir, this, _1, _2);
+		return std::bind(&DiskManager::dir, this, _1, _2, _3);
 	if (command_name == "md")
-		return std::bind(&DiskManager::md, this, _1, _2);
+		return std::bind(&DiskManager::md, this, _1, _2, _3);
 	if (command_name == "rd")
-		return std::bind(&DiskManager::rd, this, _1, _2, -1, -1);
+		return std::bind(&DiskManager::rd, this, _1, _2, _3, -1, -1);
 	if (command_name == "newfile")
-		return std::bind(&DiskManager::newfile, this, _1, _2);
-	// if (command_name == "cat")
-	//     return std::bind(&DiskManager::cat, this, _1, _2);
+		return std::bind(&DiskManager::newfile, this, _1, _2, _3);
+	if (command_name == "cat")
+	    return std::bind(&DiskManager::cat, this, _1, _2, _3);
 	if (command_name == "copy")
-		return std::bind(&DiskManager::copy, this, _1, _2);
+		return std::bind(&DiskManager::copy, this, _1, _2, _3);
 	if (command_name == "del")
-		return std::bind(&DiskManager::del, this, _1, _2, -1, -1);
+		return std::bind(&DiskManager::del, this, _1, _2, _3, -1, -1);
 	// if (command_name == "check")
-	//     return std::bind(&DiskManager::check, this, _1, _2);
+	//     return std::bind(&DiskManager::check, this, _1, _2, _3);
 
 	return nullptr;
 }
@@ -496,9 +548,9 @@ void DiskManager::listenLogin() {
 	}
 }
 
-void DiskManager::accept(int pid, int uid) {
+void DiskManager::accept(int sid, int uid) {
 	// create share memory
-	int shm_id = shmget(pid, sizeof(ShareMemory), IPC_CREAT | 0777);
+	int shm_id = shmget(sid, sizeof(ShareMemory), IPC_CREAT | 0777);
 	if (shm_id == -1) {
 		std::cerr << "failed to get share memory" << std::endl;
 		return;
@@ -511,23 +563,46 @@ void DiskManager::accept(int pid, int uid) {
 	shell.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
 	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
 
-	m_shells.insert_or_assign(pid, shell);
+	m_shells.insert_or_assign(sid, shell);
 
 	// create a thread
-	std::thread(&DiskManager::run, this, pid).detach();
+	std::thread(&DiskManager::run, this, sid).detach();
 }
 
-void DiskManager::run(int pid) {
+void DiskManager::run(int sid) {
 	std::string command;
-	auto shm = m_shells[pid].m_shm;
+	auto shm = m_shells[sid].m_shm;
 	while (true) {
 		if (shm->size <= 0) continue;
 		command = shm->buffer;
-		std::cout << pid << " send: " << command << std::endl;
-		shm->size = -1;
+		std::cout << "received from " << sid << ": " << command << std::endl;
+		exec(command, sid);
+		if (shm->size > 0) shm->size = 0;
 
 		// sleep for 0.1 second, reduce cpu cost
 		std::chrono::milliseconds dura(100);
 		std::this_thread::sleep_for(dura);
 	}
+}
+
+void DiskManager::writeOutput(std::string out, int sid) {
+	if (sid == 0) {
+		std::cout << out << std::endl;
+	}
+	else {
+		strcpy(m_shells[sid].m_shm->buffer, out.data());
+		m_shells[sid].m_shm->size = -out.size();
+	}
+}
+
+std::string DiskManager::fill(std::string s, int w, char f) {
+	int fill_width = w - s.size();
+	if (fill_width <= 0) return s;
+
+	if (f == 'l')
+		return std::string(fill_width, ' ') + s;
+	else if (f == 'r')
+		return s + std::string(fill_width, ' ');
+
+	return s;
 }

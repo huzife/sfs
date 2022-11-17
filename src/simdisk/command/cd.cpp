@@ -3,7 +3,7 @@
 static const struct option long_options[] = {
 	{nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::cd(int argc, char *argv[]) {
+int DiskManager::cd(int argc, char *argv[], int sid) {
 	optind = 0;
 	// get options
 	int ch;
@@ -16,25 +16,26 @@ int DiskManager::cd(int argc, char *argv[]) {
 
 	std::string path;
 	if (optind == argc) {
-		std::cerr << "cd: missing operand" << std::endl;
+		writeOutput("cd: missing operand", sid);
 		return -1;
 	}
 
 	path = argv[optind];
 
-	auto dentry = getDirectoryEntry(path);
+	auto dentry = getDirectoryEntry(path, sid);
 	if (dentry == nullptr) return -1;
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type != FileType::DIRECTORY && inode->m_type != FileType::LINK) {
-		std::cerr << dentry->m_filename << ": Not a directory" << std::endl;
+		writeOutput(dentry->m_filename + ": Not a directory", sid);
 		return -1;
 	}
 
-	m_cwd.m_path = getPath(m_cwd.m_path, path);
-	m_cwd.m_dentry = dentry;
-	m_cwd.m_inode = inode;
-	std::cout << "current directory: " << m_cwd.m_path << std::endl;
+	auto &shell = m_shells[sid];
+	shell.m_path = getPath(shell.m_path, path);
+	shell.m_dentry = dentry;
+	shell.m_inode = inode;
+	writeOutput("current directory: " + shell.m_path, sid);
 
 	return 0;
 }

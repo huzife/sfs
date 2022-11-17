@@ -1,6 +1,8 @@
 #include "simsh/simsh.h"
 
 int main() {
+	system("clear");
+
     // get pid of simdisk
 	int simdisk_pid = -1;
 	FILE *fp;

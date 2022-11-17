@@ -3,7 +3,7 @@
 static const struct option long_options[] = {
 	{nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::copy(int argc, char *argv[]) {
+int DiskManager::copy(int argc, char *argv[], int sid) {
 	// get options
 	int ch;
 	optind = 0;
@@ -15,11 +15,14 @@ int DiskManager::copy(int argc, char *argv[]) {
 	}
 
 	if (optind == argc) {
-		std::cerr << "copy: missing file operand" << std::endl;
+		writeOutput("copy: missing file operand", sid);
 		return -1;
 	}
 	else if (optind == argc - 1) {
-		std::cerr << "copy: missing destination file operand after '" << argv[optind] << "'" << std::endl;
+		std::string out = "copy: missing destination file operand after '";
+		out += argv[optind];
+		out += "'";
+		writeOutput(out, sid);
 		return -1;
 	}
 
@@ -28,28 +31,31 @@ int DiskManager::copy(int argc, char *argv[]) {
 
 	// TODO: implements cross-filesystem copy between simdisk and host
 	// copy from simdisk to simdisk
-	auto src_dentry = getDirectoryEntry(src);
-	auto dst_dentry = getDirectoryEntry(dst);
+	auto src_dentry = getDirectoryEntry(src, sid);
+	auto dst_dentry = getDirectoryEntry(dst, sid);
 	if (src_dentry == nullptr || dst_dentry == nullptr) return -1;
 
 	auto src_inode = getIndexNode(src_dentry->m_inode);
 	auto dst_inode = getIndexNode(dst_dentry->m_inode);
 	if (src_inode->m_type == FileType::DIRECTORY) {
-		std::cerr << "copy: cannot copy '" << src_dentry->m_filename << "': Is a directory" << std::endl;
+		std::string out("copy: cannot copy '" + src_dentry->m_filename + "': Is a directory");
+		writeOutput(out, sid);
 		return -1;
 	}
 	else if (dst_inode->m_type != FileType::DIRECTORY && dst_inode->m_type != FileType::LINK) {
-		std::cerr << "copy: cannot copy to '" << dst_dentry->m_filename << "': Not a directory" << std::endl;
+		std::string out("copy: cannot copy to '" + dst_dentry->m_filename + "': Not a directory");
+		writeOutput(out, sid);
 		return -1;
 	}
 
 	auto src_file = std::dynamic_pointer_cast<DataFile>(getFile(src_inode));
 	auto dst_file = std::dynamic_pointer_cast<DirFile>(getFile(dst_inode));
 
-    if (dst_file->m_dirs.find(src_dentry->m_filename) != dst_file->m_dirs.end()) {
-        std::cerr << "copy: cannot copy to '" << dst_dentry->m_filename << "': File exist" << std::endl;
-        return -1;
-    }
+	if (dst_file->m_dirs.find(src_dentry->m_filename) != dst_file->m_dirs.end()) {
+		std::string out("copy: cannot copy to '" + dst_dentry->m_filename + "': File exist");
+		writeOutput(out, sid);
+		return -1;
+	}
 
 	// create a new dentry
 	DirectoryEntry new_dentry(*src_dentry);
@@ -57,6 +63,11 @@ int DiskManager::copy(int argc, char *argv[]) {
 
 	// insert new dir into parent dir and modify parent dir
 	int ret = expandFileSize(dst_inode, new_dentry.m_rec_len);
+	if (ret == -1) {
+		writeOutput("error: no enough blocks", sid);
+		return -1;
+	}
+
 	dst_inode->m_subs++;
 	dst_file->m_size = dst_inode->m_size;
 	dst_file->m_subs = dst_inode->m_subs;

@@ -3,7 +3,7 @@
 static const struct option long_options[] = {
 	{nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::md(int argc, char *argv[]) {
+int DiskManager::md(int argc, char *argv[], int sid) {
 	optind = 0;
 	// get options
 	int ch;
@@ -16,7 +16,7 @@ int DiskManager::md(int argc, char *argv[]) {
 
 	std::string path;
 	if (optind == argc) {
-		std::cerr << "md: missing operand" << std::endl;
+		writeOutput("md: missing operand", sid);
 		return -1;
 	}
 
@@ -32,30 +32,33 @@ int DiskManager::md(int argc, char *argv[]) {
 			name = path.substr(0, end + 1);
 		}
 		else {
-			parent_dir = path.substr(0, pos);
+			parent_dir = pos == 0 ? "/" : path.substr(0, pos);
 			name = path.substr(pos + 1, end - pos);
 		}
 
 		// check filename size, maxsize == 255 byte
 		if (name.size() > m_super_block.m_filename_maxbytes) {
-			std::cerr << "md: cannot create directory '" + name + "': File name too long" << std::endl;
+			std::string out("md: cannot create directory '" + name + "': File name too long");
+			writeOutput(out, sid);
 			return -1;
 		}
 
 		if (name == "." || name == "..") {
-			std::cerr << "md: cannot create directory '" + name + "': File exists" << std::endl;
+			std::string out("md: cannot create directory '" + name + "': File exists");
+			writeOutput(out, sid);
 			return -1;
 		}
 
 		// get parent dir
-		auto dentry = getDirectoryEntry(parent_dir);
+		auto dentry = getDirectoryEntry(parent_dir, sid);
 		if (dentry == nullptr) return -1;
 		auto inode = getIndexNode(dentry->m_inode);
 		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 
 		// check if 'name' is exist
 		if (file->m_dirs.find(name) != file->m_dirs.end()) {
-			std::cerr << "md: cannot create directory '" + name + "': File exists" << std::endl;
+			std::string out("md: cannot create directory '" + name + "': File exists");
+			writeOutput(out, sid);
 			return -1;
 		}
 
@@ -68,6 +71,11 @@ int DiskManager::md(int argc, char *argv[]) {
 
 		// insert new dir into parent dir and modify parent dir
 		int ret = expandFileSize(inode, new_dentry.m_rec_len);
+		if (ret == -1) {
+			writeOutput("error: no enough blocks", sid);
+			return -1;
+		}
+
 		inode->m_subs++;
 		file->m_size = inode->m_size;
 		file->m_subs = inode->m_subs;

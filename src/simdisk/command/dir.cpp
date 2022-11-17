@@ -4,7 +4,7 @@ static const struct option long_options[] = {
 	{"sub-directories", no_argument, nullptr, 's'},
 	{nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::dir(int argc, char *argv[]) {
+int DiskManager::dir(int argc, char *argv[], int sid) {
 	optind = 0;
 	// get options
 	int ch;
@@ -22,12 +22,12 @@ int DiskManager::dir(int argc, char *argv[]) {
 	std::string path;
 	std::shared_ptr<DirectoryEntry> dentry;
 	if (optind == argc) {
-		path = m_cwd.m_dentry->m_filename;
-		dentry = m_cwd.m_dentry;
+		path = m_shells[sid].m_dentry->m_filename;
+		dentry = m_shells[sid].m_dentry;
 	}
 	else {
 		path = argv[optind];
-		dentry = getDirectoryEntry(path);
+		dentry = getDirectoryEntry(path, sid);
 	}
 
 	if (dentry == nullptr) return -1;
@@ -83,19 +83,19 @@ int DiskManager::dir(int argc, char *argv[]) {
 		+ 1;
 
 	// print
+	std::string out;
 	for (int i = 0; i < dirs.size(); i++) {
-		std::cout << IndexNode::FileTypeToStr(dirs[i]->m_type)
-				  << IndexNode::PermissionToStr(dirs[i]->m_owner_permission)
-				  << IndexNode::PermissionToStr(dirs[i]->m_other_permission)
-				  << std::setiosflags(std::ios::right)
-				  << std::setw(max_subs_len) << dirs[i]->m_subs
-				  << std::setw(max_owner_len) << dirs[i]->m_owner
-				  << std::setw(max_size_len) << dirs[i]->m_size
-				  << std::resetiosflags(std::ios::right)
-				  << ' ' << timeToDate(dirs[i]->m_modify_time)
-				  << ' ' << names[i]
-				  << std::endl;
+		out += IndexNode::FileTypeToStr(dirs[i]->m_type);
+		out += IndexNode::PermissionToStr(dirs[i]->m_owner_permission);
+		out += IndexNode::PermissionToStr(dirs[i]->m_other_permission);
+		out += fill(std::to_string(dirs[i]->m_subs), max_subs_len, 'l');
+		out += fill(std::to_string(dirs[i]->m_owner), max_owner_len, 'l');
+		out += fill(std::to_string(dirs[i]->m_size), max_size_len, 'l');
+		out += " " + timeToDate(dirs[i]->m_modify_time);
+		out += " " + names[i];
+		out += "\n";
 	}
+	writeOutput(out, sid);
 
 	return 0;
 }

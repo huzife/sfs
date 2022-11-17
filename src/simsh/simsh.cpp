@@ -24,12 +24,15 @@ void SimShell::start() {
 
 void SimShell::send(std::string command) {
 	// TODO: send command to simdisk
-	std::cout << "send: " << command << std::endl;
 	strcpy(m_shm->buffer, command.data());
 	m_shm->size = command.size();
 
 	// block until simdisk received successfully
 	while (m_shm->size > 0) {}
+	if (m_shm->size != 0) {
+		std::string ret = m_shm->buffer;
+		std::cout << ret << std::endl;
+	}
 }
 
 void SimShell::run() {
@@ -39,7 +42,7 @@ void SimShell::run() {
 	while (std::getline(std::cin, command)) {
 		if (command == "exit")
 			break;
-		std::cout << command << std::endl;
+		send(command);
 		std::cout << "simsh> ";
 	}
 	std::cout << "logout" << std::endl;

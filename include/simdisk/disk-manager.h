@@ -46,13 +46,16 @@ private:
 
 	std::string m_disk_path;
 
+	bool m_is_writing;
+
 	SuperBlock m_super_block;
 	FAT m_fat;
 	AllocMap<file_block_count> m_inode_map;
 	AllocMap<file_block_count> m_block_map;
-	ShellInfo m_cwd;
 
 	std::unordered_map<int, ShellInfo> m_shells;
+	std::unordered_map<std::string, int> m_uids;
+
 
 public:
 	DiskManager();
@@ -74,6 +77,8 @@ private:
 	void initDisk();
 
 	void boot();
+
+	void checkDir();
 
 	void shutdown();
 
@@ -97,11 +102,13 @@ private:
 
 	std::string timeToDate(const std::chrono::system_clock::time_point &time);
 
+	void checkAndCreate(std::string path, FileType type);
+
 	std::shared_ptr<IndexNode> getIndexNode(int id);
 
 	void writeIndexNode(int id, std::shared_ptr<IndexNode> inode);
 
-	std::shared_ptr<DirectoryEntry> getDirectoryEntry(std::string path);
+	std::shared_ptr<DirectoryEntry> getDirectoryEntry(std::string path, int sid);
 
 	std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
 
@@ -117,15 +124,15 @@ private:
 
 	int allocFileBlock(int n);
 
-	void expandBlock(int id, int n);
+	int expandBlock(int id, int n);
 
 	void freeIndexNode(int id);
 
 	void freeFlieBlock(int id);
 
-	int exec(std::string command);
+	int exec(std::string command, int sid);
 
-	std::function<int(int, char **)> getFunc(std::string command_name);
+	std::function<int(int, char **, int)> getFunc(std::string command_name);
 
 	std::vector<std::string> splitArgs(std::string command);
 
@@ -135,21 +142,25 @@ private:
 
 	void listenLogin();
 
-	void accept(int pid, int uid);
+	void accept(int sid, int uid);
 
-	void run(int pid);
+	void run(int sid);
+
+	void writeOutput(std::string out, int sid);
+
+	std::string fill(std::string s, int w, char f);
 
 	// commands
-	int info(int argc = 0, char *argv[] = nullptr);
-	int cd(int argc, char *argv[]);
-	int dir(int argc, char *argv[]);
-	int md(int argc, char *argv[]);
-	int rd(int argc, char *argv[], int inode_id, int block_id);
-	int newfile(int argc, char *argv[]);
-	int cat(int argc, char *argv[]);
-	int copy(int argc, char *argv[]);
-	int del(int argc, char *argv[], int inode_id, int block_id);
-	int check(int argc, char *argv[]);
+	int info(int argc, char *argv[], int sid);
+	int cd(int argc, char *argv[], int sid);
+	int dir(int argc, char *argv[], int sid);
+	int md(int argc, char *argv[], int sid);
+	int rd(int argc, char *argv[], int sid, int inode_id, int block_id);
+	int newfile(int argc, char *argv[], int sid);
+	int cat(int argc, char *argv[], int sid);
+	int copy(int argc, char *argv[], int sid);
+	int del(int argc, char *argv[], int sid, int inode_id, int block_id);
+	int check(int argc, char *argv[], int sid);
 };
 
 #endif // __DISK_MANAGER_H

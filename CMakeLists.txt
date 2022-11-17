@@ -40,4 +40,4 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
 add_executable(simdisk ${SIMDISK_SOURCE})
 add_executable(simsh ${SIMSH_SOURCE})
 
-target_link_libraries(simdisk pthread)
+target_link_libraries(simdisk pthread ncurses)
