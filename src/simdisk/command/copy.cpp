@@ -30,6 +30,9 @@ int DiskManager::copy(int argc, char *argv[], int sid) {
 	std::string dst = argv[optind + 1]; // destination
 
 	// TODO: implements cross-filesystem copy between simdisk and host
+	bool host_src = src.substr(0, 6) == "<host>";
+	bool host_dst = dst.substr(0, 6) == "<host>";
+
 	// copy from simdisk to simdisk
 	auto src_dentry = getDirectoryEntry(src, sid);
 	auto dst_dentry = getDirectoryEntry(dst, sid);

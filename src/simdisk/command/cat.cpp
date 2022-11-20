@@ -3,7 +3,7 @@
 static const struct option long_options[] = {
 	{nullptr, no_argument, nullptr, 0}};
 
-int DiskManager::cd(int argc, char *argv[], int sid) {
+int DiskManager::cat(int argc, char *argv[], int sid) {
 	optind = 0;
 	// get options
 	int ch;
@@ -16,7 +16,7 @@ int DiskManager::cd(int argc, char *argv[], int sid) {
 
 	std::string path;
 	if (optind == argc) {
-		writeOutput("cd: missing operand", sid);
+		writeOutput("cat: missing operand", sid);
 		return -1;
 	}
 
@@ -26,16 +26,14 @@ int DiskManager::cd(int argc, char *argv[], int sid) {
 	if (dentry == nullptr) return -1;
 
 	auto inode = getIndexNode(dentry->m_inode);
-	if (inode->m_type != FileType::DIRECTORY && inode->m_type != FileType::LINK) {
-		writeOutput("cd: " + dentry->m_filename + ": Not a directory", sid);
+	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {
+		writeOutput("cat: " + dentry->m_filename + ": Is a directory", sid);
 		return -1;
 	}
 
-	auto &shell = m_shells[sid];
-	shell.m_path = getPath(shell.m_path, path);
-	shell.m_dentry = dentry;
-	shell.m_inode = inode;
-	writeOutput("cd ret:" + shell.m_path, sid);
+    auto file = std::dynamic_pointer_cast<DataFile>(getFile(inode));
+    std::string out(file->m_data.get(), inode->m_size);
+    writeOutput(out, sid);
 
 	return 0;
 }

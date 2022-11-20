@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <thread>
 #include <unordered_map>
+#include <unordered_set>
+#include <signal.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
@@ -46,13 +48,12 @@ private:
 
 	std::string m_disk_path;
 
-	bool m_is_writing;
-
 	SuperBlock m_super_block;
 	FAT m_fat;
 	AllocMap<file_block_count> m_inode_map;
 	AllocMap<file_block_count> m_block_map;
 
+	std::unordered_map<int, int> m_threads;
 	std::unordered_map<int, ShellInfo> m_shells;
 	std::unordered_map<std::string, int> m_uids;
 
@@ -66,9 +67,6 @@ public:
 
 	int expandedSize(int size);
 
-	// this is used for testing
-	void test();
-
 private:
 	DiskBlock readBlock(int id);
 
@@ -78,7 +76,7 @@ private:
 
 	void boot();
 
-	void checkDir();
+	void checkFiles();
 
 	void shutdown();
 
@@ -89,6 +87,8 @@ private:
 	void loadINodeMap();
 
 	void loadBlockMap();
+
+	void killThreads();
 
 	void saveSuperBlock();
 
@@ -102,7 +102,7 @@ private:
 
 	std::string timeToDate(const std::chrono::system_clock::time_point &time);
 
-	void checkAndCreate(std::string path, FileType type);
+	bool checkAndCreate(std::string path, FileType type);
 
 	std::shared_ptr<IndexNode> getIndexNode(int id);
 
@@ -161,6 +161,7 @@ private:
 	int copy(int argc, char *argv[], int sid);
 	int del(int argc, char *argv[], int sid, int inode_id, int block_id);
 	int check(int argc, char *argv[], int sid);
+	int write(int argc, char *argv[], int sid);
 };
 
 #endif // __DISK_MANAGER_H

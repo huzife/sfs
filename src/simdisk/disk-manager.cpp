@@ -13,13 +13,11 @@ DiskManager::~DiskManager() {
 void DiskManager::start() {
 	initDisk();
 	boot();
-	checkDir();
+	checkFiles();
 	listenLogin();
 }
 
 DiskBlock DiskManager::readBlock(int id) {
-	while (m_is_writing) {}
-
 	std::ifstream ifs(m_disk_path, std::ios::binary | std::ios::in);
 
 	DiskBlock ret(id);
@@ -34,9 +32,6 @@ DiskBlock DiskManager::readBlock(int id) {
 }
 
 void DiskManager::writeBlock(int id, DiskBlock &block) {
-	while (m_is_writing) {}
-	m_is_writing = true;
-
 	std::fstream fs(m_disk_path, std::ios::binary | std::ios::in | std::ios::out);
 
 	std::shared_ptr<char[]> buffer(new char[DiskManager::block_size]);
@@ -44,8 +39,6 @@ void DiskManager::writeBlock(int id, DiskBlock &block) {
 	fs.seekg(id * DiskManager::block_size);
 	fs.write(buffer.get(), DiskManager::block_size);
 	fs.close();
-
-	m_is_writing = false;
 }
 
 void DiskManager::initDisk() {
@@ -55,9 +48,9 @@ void DiskManager::initDisk() {
 }
 
 void DiskManager::boot() {
-	if (m_is_on) return;
-	m_is_on = true;
 	std::cout << "[disk_manager]: booting" << std::endl;
+
+	m_is_on = true;
 
 	loadSuperBlock();
 	loadFAT();
@@ -66,22 +59,30 @@ void DiskManager::boot() {
 	initCWD();
 }
 
-void DiskManager::checkDir() {
+void DiskManager::checkFiles() {
 	// check /etc/passwd
-	checkAndCreate("/etc/passwd", FileType::NORMAL);
+	if (!checkAndCreate("/etc/passwd", FileType::NORMAL)) {
+		exec("write /etc/passwd root:password:0:/root\n", 0);
+	}
 	checkAndCreate("/root", FileType::DIRECTORY);
 	checkAndCreate("/home", FileType::DIRECTORY);
 }
 
 void DiskManager::shutdown() {
-	if (!m_is_on) return;
-	m_is_on = false;
 	std::cout << "[disk_manager]: shuting down" << std::endl;
 
+	killThreads();
 	saveSuperBlock();
 	saveFAT();
 	saveINodeMap();
 	saveBlockMap();
+}
+
+void DiskManager::killThreads() {
+	while (!m_threads.empty()) {
+		pthread_cancel(m_threads.begin()->second);
+		m_threads.erase(m_threads.begin());
+	}
 }
 
 void DiskManager::loadSuperBlock() {
@@ -176,7 +177,7 @@ std::string DiskManager::timeToDate(const std::chrono::system_clock::time_point 
 	return std::string(buffer);
 }
 
-void DiskManager::checkAndCreate(std::string path, FileType type) {
+bool DiskManager::checkAndCreate(std::string path, FileType type) {
 	auto dirs = splitPath(path);
 	assert(dirs[0] == "/");
 
@@ -190,6 +191,8 @@ void DiskManager::checkAndCreate(std::string path, FileType type) {
 		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 
 		if (i == dirs.size() - 1) {
+			if (file->m_dirs.find(dirs[i]) != file->m_dirs.end()) return true;
+
 			if (type == FileType::DIRECTORY) {
 				char *argv[] = {std::string("md").data(), cur.data()};
 				md(2, argv, 0);
@@ -198,7 +201,7 @@ void DiskManager::checkAndCreate(std::string path, FileType type) {
 				char *argv[] = {std::string("newfile").data(), cur.data()};
 				newfile(2, argv, 0);
 			}
-			return;
+			return false;
 		}
 
 		if (file->m_dirs.find(dirs[i]) == file->m_dirs.end()) {
@@ -210,6 +213,7 @@ void DiskManager::checkAndCreate(std::string path, FileType type) {
 		dentry = std::make_shared<DirectoryEntry>(file->m_dirs[dirs[i]]);
 		i++;
 	}
+	return false;
 }
 
 std::shared_ptr<IndexNode> DiskManager::getIndexNode(int id) {
@@ -268,7 +272,7 @@ std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path,
 			cur_dentry = std::make_shared<DirectoryEntry>(sub);
 		}
 		else {
-			writeOutput(cur_dentry->m_filename + ": No such file or directory", sid);
+			writeOutput(d + ": No such file or directory", sid);
 			return nullptr;
 		}
 		i++;
@@ -452,13 +456,15 @@ std::function<int(int, char **, int)> DiskManager::getFunc(std::string command_n
 	if (command_name == "newfile")
 		return std::bind(&DiskManager::newfile, this, _1, _2, _3);
 	if (command_name == "cat")
-	    return std::bind(&DiskManager::cat, this, _1, _2, _3);
+		return std::bind(&DiskManager::cat, this, _1, _2, _3);
 	if (command_name == "copy")
 		return std::bind(&DiskManager::copy, this, _1, _2, _3);
 	if (command_name == "del")
 		return std::bind(&DiskManager::del, this, _1, _2, _3, -1, -1);
 	// if (command_name == "check")
 	//     return std::bind(&DiskManager::check, this, _1, _2, _3);
+	if (command_name == "write")
+		return std::bind(&DiskManager::write, this, _1, _2, _3);
 
 	return nullptr;
 }
@@ -470,6 +476,14 @@ std::vector<std::string> DiskManager::splitArgs(std::string command) {
 	while (true) {
 		l = command.find_first_not_of(' ', r);
 		if (l == -1) break;
+		if (command[l] == '"' && l < command.size() - 1) {
+			// check if the argument is a string
+			r = command.find_first_of('"', l + 1);
+			if (r != -1) {
+				args.emplace_back(command.substr(l + 1, r - l - 1));
+				continue;
+			}
+		}
 		r = command.find_first_of(' ', l);
 		args.emplace_back(command.substr(l, r - l));
 	}
@@ -536,16 +550,17 @@ void DiskManager::listenLogin() {
 	// wait for request
 	while (true) {
 		if (msgrcv(qid, &req, Requset::req_size, Requset::req_type, 0) == -1) {
-			std::cerr << "received message failed" << std::endl;
 			return;
 		}
 
+		if (req.pid == -1) break;
 		std::cout << "accept:" << req.pid << std::endl;
 		accept(req.pid, req.uid);
 
 		std::chrono::milliseconds dura(100);
 		std::this_thread::sleep_for(dura);
 	}
+	msgctl(qid, IPC_RMID, nullptr);
 }
 
 void DiskManager::accept(int sid, int uid) {
@@ -566,7 +581,9 @@ void DiskManager::accept(int sid, int uid) {
 	m_shells.insert_or_assign(sid, shell);
 
 	// create a thread
-	std::thread(&DiskManager::run, this, sid).detach();
+	std::thread t(&DiskManager::run, this, sid);
+	m_threads[sid] = t.native_handle();
+	t.detach();
 }
 
 void DiskManager::run(int sid) {
@@ -575,6 +592,10 @@ void DiskManager::run(int sid) {
 	while (true) {
 		if (shm->size <= 0) continue;
 		command = shm->buffer;
+		if (command == "exit") {
+			std::cout << sid << " logout" << std::endl;
+			break;
+		}
 		std::cout << "received from " << sid << ": " << command << std::endl;
 		exec(command, sid);
 		if (shm->size > 0) shm->size = 0;
@@ -583,6 +604,10 @@ void DiskManager::run(int sid) {
 		std::chrono::milliseconds dura(100);
 		std::this_thread::sleep_for(dura);
 	}
+
+	shmctl(sid, IPC_RMID, nullptr);
+	m_threads.erase(sid);
+	m_shells.erase(sid);
 }
 
 void DiskManager::writeOutput(std::string out, int sid) {

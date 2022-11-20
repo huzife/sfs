@@ -1,6 +1,8 @@
 #include "simsh/simsh.h"
+#include <signal.h>
 
 int main() {
+	signal(SIGINT, [](int sig) {});
 	system("clear");
 
     // get pid of simdisk

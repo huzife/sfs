@@ -19,6 +19,9 @@ public:
 	long type; // message type
 	int pid;   // pid of the process that send the message
 	int uid;   // user id
+
+	// char user[32];	   // user name
+	// char password[64]; // password
 };
 
 #endif // __COMMAND_H

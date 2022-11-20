@@ -36,13 +36,13 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 		}
 
 		if (name.size() > m_super_block.m_filename_maxbytes) {
-			std::string out("md: cannot create directory '" + name + "': File name too long");
+			std::string out("newfile: cannot create file '" + name + "': File name too long");
 			writeOutput(out, sid);
 			return -1;
 		}
 
 		if (name == "." || name == "..") {
-			std::string out("md: cannot create directory '" + name + "': File exists");
+			std::string out("newfile: cannot create file '" + name + "': File exists");
 			writeOutput(out, sid);
 			return -1;
 		}
@@ -52,7 +52,7 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 		auto inode = getIndexNode(dentry->m_inode);
 		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 		if (file->m_dirs.find(name) != file->m_dirs.end()) {
-			std::string out("md: cannot create directory '" + name + "': File exists");
+			std::string out("newfile: cannot create file '" + name + "': File exists");
 			writeOutput(out, sid);
 			return -1;
 		}

@@ -13,6 +13,7 @@ if(CMAKE_COMPILER_IS_GNUCXX)
 endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(COMMAND_SOURCE
+    src/simdisk/command/cat.cpp
     src/simdisk/command/cd.cpp
     src/simdisk/command/copy.cpp
     src/simdisk/command/del.cpp
@@ -21,6 +22,7 @@ set(COMMAND_SOURCE
     src/simdisk/command/md.cpp
     src/simdisk/command/newfile.cpp
     src/simdisk/command/rd.cpp
+    src/simdisk/command/write.cpp
 )
 
 set(SIMDISK_SOURCE
@@ -34,6 +36,7 @@ set(SIMDISK_SOURCE
 set(SIMSH_SOURCE
     src/simsh/main.cpp
     src/simsh/simsh.cpp
+    src/simsh/builtin.cpp
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY bin)
