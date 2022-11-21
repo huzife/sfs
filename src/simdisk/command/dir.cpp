@@ -35,6 +35,12 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 
 	if (dentry == nullptr) return -1;
 	auto inode = getIndexNode(dentry->m_inode);
+
+	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
+		writeOutput("dir: cannot open directory '" + dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	std::vector<std::shared_ptr<IndexNode>> dirs;
 	std::vector<std::string> names;
 

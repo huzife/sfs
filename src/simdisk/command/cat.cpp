@@ -34,6 +34,11 @@ int DiskManager::cat(int argc, char *argv[], int sid) {
 		return -1;
 	}
 
+	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
+		writeOutput("cat: cannot open file '" + dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	auto file = std::dynamic_pointer_cast<DataFile>(getFile(inode));
 	std::string out(file->m_data.get(), inode->m_size);
 	writeOutput(out, sid);

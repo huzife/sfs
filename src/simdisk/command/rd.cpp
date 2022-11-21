@@ -43,6 +43,12 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 
 	// remove all sub-directories and files recursively
 	if (inode == nullptr) inode = getIndexNode(inode_id);
+
+	if (m_shells[sid].m_user != 0 && m_shells[sid].m_user != inode->m_owner) {
+		writeOutput("rd: cannot remove directory '" + filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 	for (auto &[name, d] : file->m_dirs) {
 		auto sub_inode = getIndexNode(d.m_inode);
@@ -61,6 +67,12 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 	auto parent_dentry = getDirectoryEntry(getPath(m_shells[sid].m_path, path + "/.."), sid);
 	if (parent_dentry == nullptr) assert(false); // unreachable;	
 	auto parent_inode = getIndexNode(parent_dentry->m_inode);
+
+	if (!checkPermission(Permission::WRITE, parent_inode, m_shells[sid].m_user)) {
+		writeOutput("rd: cannot remove directory in '" + parent_dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	auto parent_file = std::dynamic_pointer_cast<DirFile>(getFile(parent_inode));
 
 	parent_file->m_dirs.erase(filename);

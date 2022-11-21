@@ -114,9 +114,9 @@ enum class FileType : int8_t {
 };
 
 enum class Permission : int8_t {
-	READ = 1,
+	EXEC = 1,
 	WRITE = 2,
-	EXEC = 4
+	READ = 4
 };
 
 // define index node

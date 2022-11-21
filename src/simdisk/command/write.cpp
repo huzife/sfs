@@ -45,6 +45,11 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 		return -1;
 	}
 
+	if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
+		writeOutput("write: cannot write file '" + dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	int old_size = inode->m_size;
 	int inc_size = append ? content.size() : content.size() - old_size;
 	if (inc_size > 0) {

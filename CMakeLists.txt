@@ -23,6 +23,7 @@ set(COMMAND_SOURCE
     src/simdisk/command/newfile.cpp
     src/simdisk/command/rd.cpp
     src/simdisk/command/write.cpp
+    src/simdisk/command/chmod.cpp
 )
 
 set(SIMDISK_SOURCE

@@ -42,12 +42,23 @@ int DiskManager::del(int argc, char *argv[], int sid, int inode_id, int block_id
 		return -1;
 	}
 
+	if (m_shells[sid].m_user != 0 && m_shells[sid].m_user != inode->m_owner) {
+		writeOutput("del: cannot delete file '" + dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	freeFlieBlock(inode->m_location);
 	freeIndexNode(dentry->m_inode);
 
 	auto parent_dentry = getDirectoryEntry(getPath(m_shells[sid].m_path, path + "/.."), sid);
 	if (parent_dentry == nullptr) assert(false); // unreachable;	
 	auto parent_inode = getIndexNode(parent_dentry->m_inode);
+
+	if (!checkPermission(Permission::WRITE, parent_inode, m_shells[sid].m_user)) {
+		writeOutput("del: cannot delete file in '" + parent_dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	auto parent_file = std::dynamic_pointer_cast<DirFile>(getFile(parent_inode));
 
 	parent_file->m_dirs.erase(dentry->m_filename);

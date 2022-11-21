@@ -53,6 +53,12 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 		auto dentry = getDirectoryEntry(parent_dir, sid);
 		if (dentry == nullptr) return -1;
 		auto inode = getIndexNode(dentry->m_inode);
+
+		if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
+			writeOutput("newfile: cannot create file in '" + dentry->m_filename + "': Permission denied", sid);
+			return -1;
+		}
+
 		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 		if (file->m_dirs.find(name) != file->m_dirs.end()) {
 			std::string out("newfile: cannot create file '" + name + "': File exists");
@@ -84,9 +90,9 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 		// create index node
 		std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>();
 		new_inode->m_type = FileType::NORMAL;
-		new_inode->m_owner_permission = static_cast<Permission>(7);
-		new_inode->m_other_permission = static_cast<Permission>(5);
-		new_inode->m_owner = 0;
+		new_inode->m_owner_permission = static_cast<Permission>(6);
+		new_inode->m_other_permission = static_cast<Permission>(4);
+		new_inode->m_owner = m_shells[sid].m_user;
 		new_inode->m_size = 0;
 		new_inode->m_subs = 1;
 		new_inode->m_blocks = 1;

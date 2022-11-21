@@ -109,6 +109,8 @@ private:
 
 	void writeIndexNode(int id, std::shared_ptr<IndexNode> inode);
 
+	bool openDirectory(std::shared_ptr<IndexNode> inode, int sid);
+
 	std::shared_ptr<DirectoryEntry> getDirectoryEntry(std::string path, int sid);
 
 	std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
@@ -136,6 +138,8 @@ private:
 	void freeFlieBlock(int id);
 
 	int exec(std::string command, int sid);
+
+	bool checkPermission(Permission need, std::shared_ptr<IndexNode> inode, int uid);
 
 	std::function<int(int, char **, int)> getFunc(std::string command_name);
 
@@ -167,6 +171,7 @@ private:
 	int del(int argc, char *argv[], int sid, int inode_id, int block_id);
 	int check(int argc, char *argv[], int sid);
 	int write(int argc, char *argv[], int sid);
+	int chmod(int argc, char *argv[], int sid);
 };
 
 #endif // __DISK_MANAGER_H

@@ -34,6 +34,11 @@ int DiskManager::cd(int argc, char *argv[], int sid) {
 		return -1;
 	}
 
+	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
+		writeOutput("cd: cannot open directory '" + dentry->m_filename + "': bad permission", sid);
+		return -1;
+	}
+
 	auto &shell = m_shells[sid];
 	shell.m_path = getPath(shell.m_path, path);
 	shell.m_dentry = dentry;

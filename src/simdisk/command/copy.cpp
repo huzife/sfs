@@ -54,6 +54,16 @@ int DiskManager::copy(int argc, char *argv[], int sid) {
 		return -1;
 	}
 
+	if (!checkPermission(Permission::READ, src_inode, m_shells[sid].m_user)) {
+		writeOutput("copy: cannot open file '" + src_dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
+	if (!checkPermission(Permission::WRITE, src_inode, m_shells[sid].m_user)) {
+		writeOutput("copy: cannot create file in '" + dst_dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
 	auto src_file = std::dynamic_pointer_cast<DataFile>(getFile(src_inode));
 	auto dst_file = std::dynamic_pointer_cast<DirFile>(getFile(dst_inode));
 

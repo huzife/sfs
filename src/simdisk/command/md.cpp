@@ -56,6 +56,12 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 		auto dentry = getDirectoryEntry(parent_dir, sid);
 		if (dentry == nullptr) return -1;
 		auto inode = getIndexNode(dentry->m_inode);
+
+		if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
+			writeOutput("md: cannot create directory in '" + dentry->m_filename + "': Permission denied", sid);
+			return -1;
+		}
+
 		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
 
 		// check if 'name' is exist
@@ -91,7 +97,7 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 		new_inode->m_type = FileType::DIRECTORY;
 		new_inode->m_owner_permission = static_cast<Permission>(7);
 		new_inode->m_other_permission = static_cast<Permission>(5);
-		new_inode->m_owner = 0;
+		new_inode->m_owner = m_shells[sid].m_user;
 		new_inode->m_size = DiskManager::block_size;
 		new_inode->m_subs = 2;
 		new_inode->m_blocks = 1;

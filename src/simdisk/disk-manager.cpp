@@ -281,6 +281,10 @@ void DiskManager::writeIndexNode(int id, std::shared_ptr<IndexNode> inode) {
 	writeBlock(block_id, block);
 }
 
+bool DiskManager::openDirectory(std::shared_ptr<IndexNode> inode, int sid) {
+	return checkPermission(Permission::EXEC, inode, m_shells[sid].m_user);
+}
+
 std::shared_ptr<DirectoryEntry> DiskManager::getDirectoryEntry(std::string path, int sid) {
 	if (path == "." || path == "./")
 		return m_shells[sid].m_dentry;
@@ -526,6 +530,23 @@ int DiskManager::exec(std::string command, int sid) {
 	return func(argc, argv, sid);
 }
 
+bool DiskManager::checkPermission(Permission need, std::shared_ptr<IndexNode> inode, int uid) {
+	Permission perm;
+	if (uid == 0)
+		perm = static_cast<Permission>(7);
+	else if (uid == inode->m_owner)
+		perm = inode->m_owner_permission;
+	else
+		perm = inode->m_other_permission;
+
+	for (int i = 0; i < 2; i++) {
+		if (static_cast<int>(need) & (1 << i) && !(static_cast<int>(need) & (1 << i)))
+			return false;
+	}
+
+	return true;
+}
+
 std::function<int(int, char **, int)> DiskManager::getFunc(std::string command_name) {
 	using namespace std::placeholders;
 	if (command_name == "info")
@@ -550,6 +571,8 @@ std::function<int(int, char **, int)> DiskManager::getFunc(std::string command_n
 	//     return std::bind(&DiskManager::check, this, _1, _2, _3);
 	if (command_name == "write")
 		return std::bind(&DiskManager::write, this, _1, _2, _3);
+	if (command_name == "chmod")
+		return std::bind(&DiskManager::chmod, this, _1, _2, _3);
 
 	return nullptr;
 }
