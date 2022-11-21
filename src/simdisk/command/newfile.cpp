@@ -10,6 +10,9 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 	while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
 		switch (ch) {
 		default:
+			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+			if (sid != 0)
+				writeOutput(out, sid);
 			return -1;
 		}
 	}

@@ -247,4 +247,23 @@ public:
 	}
 };
 
+// record users info
+class User {
+public:
+	std::string m_name;	  // user name
+	std::string m_passwd; // password
+	int m_uid;			  // user id
+	std::string m_home;	  // user home directory
+};
+
+#if 0
+// hash function of User
+class UserHash{
+public:
+	size_t operator()(const User &user) const {
+		return std::hash<std::string>()(user.m_name);
+	}
+};
+#endif
+
 #endif // __BASIC_H

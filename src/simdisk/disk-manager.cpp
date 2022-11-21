@@ -11,9 +11,12 @@ DiskManager::~DiskManager() {
 }
 
 void DiskManager::start() {
+	opterr = 0; // disable error info of getopt
+
 	initDisk();
 	boot();
 	checkFiles();
+	loadUsers();
 	listenLogin();
 }
 
@@ -141,6 +144,44 @@ void DiskManager::loadBlockMap() {
 	m_block_map.load(buffer);
 }
 
+void DiskManager::loadUsers() {
+	std::string file = readFile("/etc/passwd");
+	std::vector<std::string> users;
+	int l = 0;
+
+	// split each line
+	while (l < file.size()) {
+		int r = file.find_first_of('\n', l);
+		assert(r != -1);
+		users.emplace_back(file.substr(l, r - l));
+		l = r + 1;
+	}
+
+	for (auto user : users) {
+		User u;
+		int l = 0, r;
+
+		// read name
+		r = user.find_first_of(':', l);
+		u.m_name = user.substr(l, r - l);
+		l = r + 1;
+
+		// read password
+		r = user.find_first_of(':', l);
+		u.m_passwd = user.substr(l, r - l);
+		l = r + 1;
+
+		// read uid
+		r = user.find_first_of(':', l);
+		u.m_uid = strtol(user.substr(l, r - l).data(), nullptr, 10);
+		l = r + 1;
+
+		// read home path
+		u.m_home = user.substr(l, r - l);
+		m_users[u.m_name] = u;
+	}
+}
+
 void DiskManager::saveBlockMap() {
 	auto buffer = m_block_map.dump();
 	for (int i = 0; i < m_super_block.m_inode_map_size; i++) {
@@ -151,7 +192,7 @@ void DiskManager::saveBlockMap() {
 }
 
 void DiskManager::initCWD() {
-	ShellInfo shell;
+	ShellInfo shell(0);
 	shell.m_path = "/";
 	shell.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
 	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
@@ -230,6 +271,9 @@ std::shared_ptr<IndexNode> DiskManager::getIndexNode(int id) {
 
 void DiskManager::writeIndexNode(int id, std::shared_ptr<IndexNode> inode) {
 	assert(id < m_super_block.m_total_inode);
+
+	updateTime(inode, 'c');
+
 	int block_id = DiskManager::inode_block_offset + id / DiskManager::inode_per_block;
 	int block_offset = id % DiskManager::inode_per_block * DiskManager::inode_size;
 	DiskBlock block = readBlock(block_id);
@@ -303,6 +347,8 @@ std::shared_ptr<File> DiskManager::getFile(std::shared_ptr<IndexNode> inode) {
 	}
 	ret->load(buffer);
 
+	updateTime(inode, 'a');
+
 	return ret;
 }
 
@@ -316,6 +362,45 @@ void DiskManager::writeFile(std::shared_ptr<IndexNode> inode, std::shared_ptr<Fi
 		writeBlock(cur, block);
 		i++;
 		cur = m_fat[cur];
+	}
+
+	updateTime(inode, 'm');
+}
+
+std::string DiskManager::readFile(std::string path) {
+	// check path
+	assert(!path.empty() && path[0] == '/');
+
+	// get directory entry
+	auto dentry = getDirectoryEntry(path, 0);
+	if (dentry == nullptr) return "";
+
+	// get index node
+	auto inode = getIndexNode(dentry->m_inode);
+	if (inode->m_type != FileType::NORMAL) return "";
+
+	auto file = std::dynamic_pointer_cast<DataFile>(getFile(inode));
+	std::string data(file->dump().get(), inode->m_size);
+
+	return data;
+}
+
+void DiskManager::updateTime(std::shared_ptr<IndexNode> inode, char type) {
+	auto now = std::chrono::system_clock::now();
+	switch (type) {
+	case 'a':
+		inode->m_access_time = now;
+		break;
+	case 'c':
+		inode->m_change_time = now;
+		break;
+	case 'm':
+		inode->m_access_time = now;
+		inode->m_change_time = now;
+		inode->m_modify_time = now;
+		break;
+	default:
+		return; // unreachable
 	}
 }
 
@@ -555,15 +640,17 @@ void DiskManager::listenLogin() {
 
 		if (req.pid == -1) break;
 		std::cout << "accept:" << req.pid << std::endl;
-		accept(req.pid, req.uid);
+
+		accept(req);
 
 		std::chrono::milliseconds dura(100);
 		std::this_thread::sleep_for(dura);
 	}
-	msgctl(qid, IPC_RMID, nullptr);
 }
 
-void DiskManager::accept(int sid, int uid) {
+void DiskManager::accept(Requset req) {
+	int sid = req.pid;
+
 	// create share memory
 	int shm_id = shmget(sid, sizeof(ShareMemory), IPC_CREAT | 0777);
 	if (shm_id == -1) {
@@ -571,12 +658,29 @@ void DiskManager::accept(int sid, int uid) {
 		return;
 	}
 
+	std::string user_name = req.user;
+	std::string password = req.password;
+	auto iter = m_users.find(user_name);
+	if (iter == m_users.end()) {
+		writeOutput("fail: user doesn't exists", sid);
+		return;
+	}
+
+	User u = iter->second;
+	if (password != u.m_passwd) {
+		writeOutput("fail: wrong password", sid);
+		return;
+	}
+
+	// send back home path
+	writeOutput(u.m_home, sid);
+
 	// register information
-	ShellInfo shell(uid);
+	ShellInfo shell(u.m_uid);
 	shell.m_shm = (ShareMemory *)(shmat(shm_id, nullptr, 0));
-	shell.m_path = "/";
-	shell.m_dentry = std::make_shared<DirectoryEntry>(m_super_block.m_root);
-	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
+	shell.m_path = u.m_home;
+	shell.m_dentry = getDirectoryEntry(u.m_home, 0);
+	shell.m_inode = getIndexNode(shell.m_dentry->m_inode);
 
 	m_shells.insert_or_assign(sid, shell);
 
@@ -587,11 +691,10 @@ void DiskManager::accept(int sid, int uid) {
 }
 
 void DiskManager::run(int sid) {
-	std::string command;
 	auto shm = m_shells[sid].m_shm;
 	while (true) {
 		if (shm->size <= 0) continue;
-		command = shm->buffer;
+		std::string command(shm->buffer, shm->size);
 		if (command == "exit") {
 			std::cout << sid << " logout" << std::endl;
 			break;
@@ -605,7 +708,6 @@ void DiskManager::run(int sid) {
 		std::this_thread::sleep_for(dura);
 	}
 
-	shmctl(sid, IPC_RMID, nullptr);
 	m_threads.erase(sid);
 	m_shells.erase(sid);
 }
@@ -615,8 +717,17 @@ void DiskManager::writeOutput(std::string out, int sid) {
 		std::cout << out << std::endl;
 	}
 	else {
-		strcpy(m_shells[sid].m_shm->buffer, out.data());
-		m_shells[sid].m_shm->size = -out.size();
+		ShareMemory *shm;
+		if (m_shells.find(sid) != m_shells.end()) {
+			shm = m_shells[sid].m_shm;
+		}
+		else {
+			int shm_id = shmget(sid, sizeof(ShareMemory), IPC_CREAT | 0777);
+			shm = (ShareMemory *)(shmat(shm_id, nullptr, 0));
+		}
+
+		memcpy(shm->buffer, out.data(), out.size());
+		shm->size = -out.size();
 	}
 }
 

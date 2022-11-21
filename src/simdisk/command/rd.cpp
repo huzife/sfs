@@ -14,6 +14,9 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 		while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
 			switch (ch) {
 			default:
+			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+			if (sid != 0)
+				writeOutput(out, sid);
 				return -1;
 			}
 		}

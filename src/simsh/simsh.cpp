@@ -7,11 +7,20 @@ void SimShell::start() {
 
 	req.type = Requset::req_type;
 	req.pid = m_pid;
-	req.uid = 111;
-	std::cout << "login: ";
+
+	// input user name
+	std::cout << "login user: ";
 	std::cin >> m_user_name;
+	strcpy(req.user, m_user_name.data());
+
+	// input password
+	std::string password;
+	std::cout << "password: \033[?25l";
+	std::cin >> password;
+	std::cout << "\033[?25h";
+	strcpy(req.password, password.data());
+
 	std::cin.ignore();
-	m_cwd = "/";
 
 	msgsnd(qid, &req, Requset::req_size, 0);
 	m_shm_id = shmget(m_pid, sizeof(ShareMemory), IPC_CREAT | 0777);
@@ -20,6 +29,17 @@ void SimShell::start() {
 		return;
 	}
 	m_shm = (ShareMemory *)(shmat(m_shm_id, nullptr, 0));
+
+	// while (m_shm->size > 0) {}
+	sleep(1);
+
+	std::string ret(m_shm->buffer, -m_shm->size);
+	if (ret.substr(0, 4) == "fail") {
+		std::cout << ret << std::endl;
+		return;
+	}
+
+	m_cwd = ret;
 
 	run();
 }
@@ -63,22 +83,22 @@ bool SimShell::checkBuiltin(std::string command) {
 }
 
 void SimShell::send(std::string command) {
-	strcpy(m_shm->buffer, command.data());
+	memcpy(m_shm->buffer, command.data(), command.size());
 	m_shm->size = command.size();
 
 	// block until simdisk received successfully
 	while (m_shm->size > 0) {}
 	if (m_shm->size != 0) {
-		std::string ret = m_shm->buffer;
-		if (ret.back() != '\n')
-			ret += '\n';
-
+		std::string ret(m_shm->buffer, -m_shm->size);
 		if (ret.substr(0, 7) == "cd ret:") {
-			m_cwd = m_shm->buffer + 7;
+			m_cwd = ret.substr(7);
 			if (m_cwd.size() > 1 && m_cwd.back() == '/')
 				m_cwd.pop_back();
 			return;
 		}
+		
+		if (ret.back() != '\n')
+			ret += '\n';
 
 		std::cout << ret;
 		setY(getLineCount(ret));

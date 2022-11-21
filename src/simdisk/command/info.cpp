@@ -1,6 +1,22 @@
 #include "simdisk/disk-manager.h"
 
+static const struct option long_options[] = {
+	{nullptr, no_argument, nullptr, 0}};
+
 int DiskManager::info(int argc, char *argv[], int sid) {
+	optind = 0;
+	// get options
+	int ch;
+	while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
+		switch (ch) {
+		default:
+			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+			if (sid != 0)
+				writeOutput(out, sid);
+			return -1;
+		}
+	}
+
 	std::string out;
 	out += fill("FAT location:", 22, 'r') + std::to_string(m_super_block.m_fat_location) + "\n";
 	out += fill("FAT size:", 22, 'r') + std::to_string(m_super_block.m_fat_size) + "\n";

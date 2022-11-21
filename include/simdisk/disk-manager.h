@@ -55,8 +55,7 @@ private:
 
 	std::unordered_map<int, int> m_threads;
 	std::unordered_map<int, ShellInfo> m_shells;
-	std::unordered_map<std::string, int> m_uids;
-
+	std::unordered_map<std::string, User> m_users;
 
 public:
 	DiskManager();
@@ -88,6 +87,8 @@ private:
 
 	void loadBlockMap();
 
+	void loadUsers();
+
 	void killThreads();
 
 	void saveSuperBlock();
@@ -113,6 +114,10 @@ private:
 	std::shared_ptr<File> getFile(std::shared_ptr<IndexNode> inode);
 
 	void writeFile(std::shared_ptr<IndexNode> inode, std::shared_ptr<File> file);
+
+	std::string readFile(std::string path);
+
+	void updateTime(std::shared_ptr<IndexNode> inode, char type);
 
 	int getDirSize(std::shared_ptr<IndexNode> inode);
 
@@ -142,7 +147,7 @@ private:
 
 	void listenLogin();
 
-	void accept(int sid, int uid);
+	void accept(Requset req);
 
 	void run(int sid);
 

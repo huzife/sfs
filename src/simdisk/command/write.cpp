@@ -15,6 +15,9 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 			append = true;
 			break;
 		default:
+			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+			if (sid != 0)
+				writeOutput(out, sid);
 			return -1;
 		}
 	}

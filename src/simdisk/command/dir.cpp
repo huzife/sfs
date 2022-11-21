@@ -15,6 +15,9 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 			sub_directories = true;
 			break;
 		default:
+			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+			if (sid != 0)
+				writeOutput(out, sid);
 			return 1;
 		}
 	}
@@ -22,7 +25,7 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 	std::string path;
 	std::shared_ptr<DirectoryEntry> dentry;
 	if (optind == argc) {
-		path = m_shells[sid].m_dentry->m_filename;
+		path = m_shells[sid].m_path;
 		dentry = m_shells[sid].m_dentry;
 	}
 	else {
