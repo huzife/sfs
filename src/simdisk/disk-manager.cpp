@@ -14,10 +14,36 @@ void DiskManager::start() {
 	opterr = 0; // disable error info of getopt
 
 	initDisk();
-	boot();
+	boot();	
 	checkFiles();
 	loadUsers();
 	listenLogin();
+}
+
+
+
+int DiskManager::open(int fid, std::string mode, int sid) {
+	if (mode == "r")
+		m_file_status[fid].read();
+	else if (mode == "w" || mode == "wr" || mode == "rw")
+		m_file_status[fid].write();
+	else
+		return -1;
+	return 0;
+}
+
+int DiskManager::close(int fid, std::string mode) {
+	if (mode == "r")
+		m_file_status[fid].finishRead();
+	else if (mode == "w" || mode == "wr" || mode == "rw")
+		m_file_status[fid].finishWrite();
+	else
+		return -1;
+
+	if (m_file_status[fid].count == 0)
+		m_file_status.erase(fid);
+	
+	return 0;
 }
 
 DiskBlock DiskManager::readBlock(int id) {
@@ -198,14 +224,6 @@ void DiskManager::initCWD() {
 	shell.m_inode = getIndexNode(m_super_block.m_root.m_inode);
 
 	m_shells[0] = shell;
-}
-
-int DiskManager::expandedSize(int size) {
-	int cnt = size / DiskManager::block_size;
-	if (size % DiskManager::block_size)
-		cnt++;
-
-	return cnt * DiskManager::block_size;
 }
 
 std::string DiskManager::timeToDate(const std::chrono::system_clock::time_point &time) {

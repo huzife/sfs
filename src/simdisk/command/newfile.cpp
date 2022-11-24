@@ -23,92 +23,95 @@ int DiskManager::newfile(int argc, char *argv[], int sid) {
 		return -1;
 	}
 
-	while (optind < argc) {
-		path = argv[optind++];
+	path = argv[optind++];
 
-		int end = path.find_last_not_of('/');
-		int pos = path.find_last_of('/', end);
-		std::string parent_dir, name;
-		if (pos == UINT64_MAX) {
-			parent_dir = ".";
-			name = path.substr(0, end + 1);
-		}
-		else {
-			parent_dir = path.substr(0, pos);
-			name = path.substr(pos + 1, end - pos);
-		}
-
-		if (name.size() > m_super_block.m_filename_maxbytes) {
-			std::string out("newfile: cannot create file '" + name + "': File name too long");
-			writeOutput(out, sid);
-			return -1;
-		}
-
-		if (name == "." || name == "..") {
-			std::string out("newfile: cannot create file '" + name + "': File exists");
-			writeOutput(out, sid);
-			return -1;
-		}
-
-		auto dentry = getDirectoryEntry(parent_dir, sid);
-		if (dentry == nullptr) return -1;
-		auto inode = getIndexNode(dentry->m_inode);
-
-		if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
-			writeOutput("newfile: cannot create file in '" + dentry->m_filename + "': Permission denied", sid);
-			return -1;
-		}
-
-		auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
-		if (file->m_dirs.find(name) != file->m_dirs.end()) {
-			std::string out("newfile: cannot create file '" + name + "': File exists");
-			writeOutput(out, sid);
-			return -1;
-		}
-
-		// create a new dentry
-		DirectoryEntry new_dentry;
-		new_dentry.m_filename = name;
-		new_dentry.m_inode = allocIndexNode();
-		new_dentry.m_name_len = name.size();
-		new_dentry.m_rec_len = 7 + new_dentry.m_name_len;
-
-		// insert new dir into parent dir and modify parent dir
-		int ret = expandFileSize(inode, new_dentry.m_rec_len);
-		if (ret == -1) {
-			writeOutput("error: no enough blocks", sid);
-			return -1;
-		}
-
-		inode->m_subs++;
-		file->m_size = inode->m_size;
-		file->m_subs = inode->m_subs;
-		file->m_dirs[new_dentry.m_filename] = new_dentry;
-		writeIndexNode(dentry->m_inode, inode);
-		writeFile(inode, file);
-
-		// create index node
-		std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>();
-		new_inode->m_type = FileType::NORMAL;
-		new_inode->m_owner_permission = static_cast<Permission>(6);
-		new_inode->m_other_permission = static_cast<Permission>(4);
-		new_inode->m_owner = m_shells[sid].m_user;
-		new_inode->m_size = 0;
-		new_inode->m_subs = 1;
-		new_inode->m_blocks = 1;
-		new_inode->m_location = allocFileBlock(1);
-		new_inode->m_count = 1;
-		auto now = std::chrono::system_clock::now();
-		new_inode->m_create_time = now;
-		new_inode->m_access_time = now;
-		new_inode->m_modify_time = now;
-		new_inode->m_change_time = now;
-		writeIndexNode(new_dentry.m_inode, new_inode);
-
-		// create file
-		auto new_file = std::make_shared<DataFile>(new_inode->m_blocks * DiskManager::block_size);
-		writeFile(new_inode, new_file);
+	int end = path.find_last_not_of('/');
+	int pos = path.find_last_of('/', end);
+	std::string parent_dir, name;
+	if (pos == UINT64_MAX) {
+		parent_dir = ".";
+		name = path.substr(0, end + 1);
 	}
+	else {
+		parent_dir = path.substr(0, pos);
+		name = path.substr(pos + 1, end - pos);
+	}
+
+	if (name.size() > m_super_block.m_filename_maxbytes) {
+		std::string out("newfile: cannot create file '" + name + "': File name too long");
+		writeOutput(out, sid);
+		return -1;
+	}
+
+	if (name == "." || name == "..") {
+		std::string out("newfile: cannot create file '" + name + "': File exists");
+		writeOutput(out, sid);
+		return -1;
+	}
+
+	auto dentry = getDirectoryEntry(parent_dir, sid);
+	if (dentry == nullptr) return -1;
+
+	open(dentry->m_inode, "w", sid);
+
+	auto inode = getIndexNode(dentry->m_inode);
+
+	if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
+		writeOutput("newfile: cannot create file in '" + dentry->m_filename + "': Permission denied", sid);
+		return -1;
+	}
+
+	auto file = std::dynamic_pointer_cast<DirFile>(getFile(inode));
+	if (file->m_dirs.find(name) != file->m_dirs.end()) {
+		std::string out("newfile: cannot create file '" + name + "': File exists");
+		writeOutput(out, sid);
+		return -1;
+	}
+
+	// create a new dentry
+	DirectoryEntry new_dentry;
+	new_dentry.m_filename = name;
+	new_dentry.m_inode = allocIndexNode();
+	new_dentry.m_name_len = name.size();
+	new_dentry.m_rec_len = 7 + new_dentry.m_name_len;
+
+	// insert new dir into parent dir and modify parent dir
+	int ret = expandFileSize(inode, new_dentry.m_rec_len);
+	if (ret == -1) {
+		writeOutput("error: no enough blocks", sid);
+		return -1;
+	}
+
+	inode->m_subs++;
+	file->m_size = inode->m_size;
+	file->m_subs = inode->m_subs;
+	file->m_dirs[new_dentry.m_filename] = new_dentry;
+	writeIndexNode(dentry->m_inode, inode);
+	writeFile(inode, file);
+
+	// create index node
+	std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>();
+	new_inode->m_type = FileType::NORMAL;
+	new_inode->m_owner_permission = static_cast<Permission>(6);
+	new_inode->m_other_permission = static_cast<Permission>(4);
+	new_inode->m_owner = m_shells[sid].m_user;
+	new_inode->m_size = 0;
+	new_inode->m_subs = 1;
+	new_inode->m_blocks = 1;
+	new_inode->m_location = allocFileBlock(1);
+	new_inode->m_count = 1;
+	auto now = std::chrono::system_clock::now();
+	new_inode->m_create_time = now;
+	new_inode->m_access_time = now;
+	new_inode->m_modify_time = now;
+	new_inode->m_change_time = now;
+	writeIndexNode(new_dentry.m_inode, new_inode);
+
+	// create file
+	auto new_file = std::make_shared<DataFile>(new_inode->m_blocks * DiskManager::block_size);
+	writeFile(new_inode, new_file);
+
+	close(dentry->m_inode, "w");
 
 	return 0;
 }

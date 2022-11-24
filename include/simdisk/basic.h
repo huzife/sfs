@@ -6,12 +6,17 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <atomic>
 #include <cstdlib>
 #include <chrono>
 #include <string.h>
 #include <assert.h>
 #include <iostream> // for debug
+#include <unistd.h>
+#include <sys/types.h>
+#include <semaphore.h>
 #include "simdisk/communication.h"
+
 
 class DiskManager;
 
@@ -224,6 +229,42 @@ public:
 	std::shared_ptr<char[]> dump() override;
 
 	void load(std::shared_ptr<char[]> buffer) override;
+};
+
+class FileStatus {
+public:
+	std::atomic<int> count;
+	sem_t rw;
+	sem_t w;
+
+	FileStatus() : count(0) {
+		sem_init(&rw, 0, 1);
+		sem_init(&w, 0, 1);
+	}
+
+	void write() {
+		sem_wait(&w);
+		sem_wait(&rw);
+	}
+
+	void finishWrite() {
+		sem_post(&rw);
+		sem_post(&w);
+	}
+
+	void read() {
+		sem_wait(&w);
+		if (count == 0)
+			sem_wait(&rw);
+		count++;
+		sem_post(&w);
+	}
+
+	void finishRead() {
+		count--;
+		if (count == 0)
+			sem_post(&rw);
+	}
 };
 
 // current working directories

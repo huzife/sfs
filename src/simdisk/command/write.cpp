@@ -38,6 +38,8 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 
 	auto dentry = getDirectoryEntry(path, sid);
 	if (dentry == nullptr) return -1;
+	
+	open(dentry->m_inode, "w", sid);
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {
@@ -78,6 +80,8 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 	writeFile(inode, file);
 	writeIndexNode(dentry->m_inode, inode);
 	writeOutput("write: success", sid);
+
+	close(dentry->m_inode, "w");
 
 	return 0;
 }

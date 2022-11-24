@@ -34,6 +34,9 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 	}
 
 	if (dentry == nullptr) return -1;
+
+	open(dentry->m_inode, "r", sid);
+
 	auto inode = getIndexNode(dentry->m_inode);
 
 	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
@@ -60,6 +63,9 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 		dirs.emplace_back(inode);
 		names.emplace_back(path);
 	}
+
+	close(dentry->m_inode, "r");
+	
 	// format output
 	// get max length of m_subs
 	int max_subs_len =

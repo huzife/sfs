@@ -41,6 +41,9 @@ int DiskManager::copy(int argc, char *argv[], int sid) {
 	auto dst_dentry = getDirectoryEntry(dst, sid);
 	if (src_dentry == nullptr || dst_dentry == nullptr) return -1;
 
+	open(src_dentry->m_inode, "r", sid);
+	open(dst_dentry->m_inode, "w", sid);
+
 	auto src_inode = getIndexNode(src_dentry->m_inode);
 	auto dst_inode = getIndexNode(dst_dentry->m_inode);
 	if (src_inode->m_type == FileType::DIRECTORY) {
@@ -104,6 +107,9 @@ int DiskManager::copy(int argc, char *argv[], int sid) {
 
 	// create file
 	writeFile(new_inode, src_file);
+
+	close(src_dentry->m_inode, "r");
+	close(dst_dentry->m_inode, "w");
 
 	return 0;
 }

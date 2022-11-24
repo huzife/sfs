@@ -28,6 +28,8 @@ int DiskManager::cat(int argc, char *argv[], int sid) {
 	auto dentry = getDirectoryEntry(path, sid);
 	if (dentry == nullptr) return -1;
 
+	open(dentry->m_inode, "r", sid);
+
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {
 		writeOutput("cat: " + dentry->m_filename + ": Is a directory", sid);
@@ -42,6 +44,8 @@ int DiskManager::cat(int argc, char *argv[], int sid) {
 	auto file = std::dynamic_pointer_cast<DataFile>(getFile(inode));
 	std::string out(file->m_data.get(), inode->m_size);
 	writeOutput(out, sid);
+
+	close(dentry->m_inode, "r");
 
 	return 0;
 }

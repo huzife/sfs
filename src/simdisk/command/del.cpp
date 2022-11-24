@@ -51,7 +51,10 @@ int DiskManager::del(int argc, char *argv[], int sid, int inode_id, int block_id
 	freeIndexNode(dentry->m_inode);
 
 	auto parent_dentry = getDirectoryEntry(getPath(m_shells[sid].m_path, path + "/.."), sid);
-	if (parent_dentry == nullptr) assert(false); // unreachable;	
+	if (parent_dentry == nullptr) assert(false); // unreachable;
+	
+	open(parent_dentry->m_inode, "w", sid);
+
 	auto parent_inode = getIndexNode(parent_dentry->m_inode);
 
 	if (!checkPermission(Permission::WRITE, parent_inode, m_shells[sid].m_user)) {
@@ -67,6 +70,8 @@ int DiskManager::del(int argc, char *argv[], int sid, int inode_id, int block_id
 
 	writeIndexNode(parent_dentry->m_inode, parent_inode);
 	writeFile(parent_inode, parent_file);
+
+	close(parent_dentry->m_inode, "w");
 
 	return 0;
 }

@@ -14,9 +14,9 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 		while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
 			switch (ch) {
 			default:
-			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
-			if (sid != 0)
-				writeOutput(out, sid);
+				std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
+				if (sid != 0)
+					writeOutput(out, sid);
 				return -1;
 			}
 		}
@@ -29,6 +29,7 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 
 		auto dentry = getDirectoryEntry(path, sid);
 		if (dentry == nullptr) return -1;
+
 		inode_id = dentry->m_inode;
 		filename = dentry->m_filename;
 
@@ -65,7 +66,7 @@ int DiskManager::rd(int argc, char *argv[], int sid, int inode_id, int block_id)
 	if (argc == 0) return 0;
 
 	auto parent_dentry = getDirectoryEntry(getPath(m_shells[sid].m_path, path + "/.."), sid);
-	if (parent_dentry == nullptr) assert(false); // unreachable;	
+	if (parent_dentry == nullptr) assert(false); // unreachable;
 	auto parent_inode = getIndexNode(parent_dentry->m_inode);
 
 	if (!checkPermission(Permission::WRITE, parent_inode, m_shells[sid].m_user)) {

@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <getopt.h>
 #include <functional>
+#include <atomic>
 #include <algorithm>
 #include <thread>
 #include <unordered_map>
@@ -19,6 +20,7 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 #include <sys/msg.h>
+#include <sys/sem.h>
 #include "simdisk/initializor.h"
 #include "simdisk/basic.h"
 #include "simdisk/communication.h"
@@ -56,6 +58,7 @@ private:
 	std::unordered_map<int, int> m_threads;
 	std::unordered_map<int, ShellInfo> m_shells;
 	std::unordered_map<std::string, User> m_users;
+	std::unordered_map<int, FileStatus> m_file_status;
 
 public:
 	DiskManager();
@@ -64,7 +67,9 @@ public:
 
 	void start();
 
-	int expandedSize(int size);
+	int open(int fid, std::string mode, int sid);
+
+	int close(int fid, std::string mode);
 
 private:
 	DiskBlock readBlock(int id);
