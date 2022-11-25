@@ -29,15 +29,18 @@ int DiskManager::cat(int argc, char *argv[], int sid) {
 	if (dentry == nullptr) return -1;
 
 	open(dentry->m_inode, "r", sid);
+	std::this_thread::sleep_for(std::chrono::seconds(3)); // for debug
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {
 		writeOutput("cat: " + dentry->m_filename + ": Is a directory", sid);
+		close(dentry->m_inode, "r");
 		return -1;
 	}
 
 	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
 		writeOutput("cat: cannot open file '" + dentry->m_filename + "': Permission denied", sid);
+		close(dentry->m_inode, "r");
 		return -1;
 	}
 

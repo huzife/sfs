@@ -61,6 +61,7 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 
 	if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
 		writeOutput("md: cannot create directory in '" + dentry->m_filename + "': Permission denied", sid);
+		close(dentry->m_inode, "w");
 		return -1;
 	}
 
@@ -70,6 +71,7 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 	if (file->m_dirs.find(name) != file->m_dirs.end()) {
 		std::string out("md: cannot create directory '" + name + "': File exists");
 		writeOutput(out, sid);
+		close(dentry->m_inode, "w");
 		return -1;
 	}
 
@@ -84,6 +86,7 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 	int ret = expandFileSize(inode, new_dentry.m_rec_len);
 	if (ret == -1) {
 		writeOutput("error: no enough blocks", sid);
+		close(dentry->m_inode, "w");
 		return -1;
 	}
 

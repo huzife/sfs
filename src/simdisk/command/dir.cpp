@@ -41,6 +41,7 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 
 	if (!checkPermission(Permission::READ, inode, m_shells[sid].m_user)) {
 		writeOutput("dir: cannot open directory '" + dentry->m_filename + "': Permission denied", sid);
+		close(dentry->m_inode, "r");
 		return -1;
 	}
 
@@ -65,7 +66,7 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 	}
 
 	close(dentry->m_inode, "r");
-	
+
 	// format output
 	// get max length of m_subs
 	int max_subs_len =

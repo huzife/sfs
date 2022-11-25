@@ -17,7 +17,6 @@
 #include <semaphore.h>
 #include "simdisk/communication.h"
 
-
 class DiskManager;
 
 // define a disk block
@@ -141,6 +140,33 @@ public:
 	std::chrono::system_clock::time_point m_modify_time; // last modify time
 	std::chrono::system_clock::time_point m_change_time; // last change time
 
+	IndexNode() = default;
+
+	IndexNode(const IndexNode &) = default;
+
+	IndexNode &operator=(const IndexNode &) = default;
+
+	IndexNode(FileType type, uint16_t owner, int loc) : m_type(type), m_owner(owner), m_location(loc) {
+		m_owner_permission = static_cast<Permission>(7);
+		m_other_permission = static_cast<Permission>(5);
+		m_size = type == FileType::DIRECTORY ? 1024 : 0;
+		m_subs = type == FileType::DIRECTORY ? 2 : 1;
+		m_blocks = 1;
+		m_count = 1;
+
+		auto now = std::chrono::system_clock::now();
+		m_create_time = now;
+		m_access_time = now;
+		m_modify_time = now;
+		m_change_time = now;
+	}
+
+	IndexNode(FileType type, uint16_t owner, int loc, int size, int blocks)
+		: IndexNode(type, owner, loc) {
+		m_size = size;
+		m_blocks = blocks;
+	}
+
 	static std::string FileTypeToStr(FileType type);
 
 	static std::string PermissionToStr(Permission p);
@@ -242,29 +268,13 @@ public:
 		sem_init(&w, 0, 1);
 	}
 
-	void write() {
-		sem_wait(&w);
-		sem_wait(&rw);
-	}
+	void write();
 
-	void finishWrite() {
-		sem_post(&rw);
-		sem_post(&w);
-	}
+	void finishWrite();
 
-	void read() {
-		sem_wait(&w);
-		if (count == 0)
-			sem_wait(&rw);
-		count++;
-		sem_post(&w);
-	}
+	void read();
 
-	void finishRead() {
-		count--;
-		if (count == 0)
-			sem_post(&rw);
-	}
+	void finishRead();
 };
 
 // current working directories

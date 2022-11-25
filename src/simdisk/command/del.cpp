@@ -59,6 +59,7 @@ int DiskManager::del(int argc, char *argv[], int sid, int inode_id, int block_id
 
 	if (!checkPermission(Permission::WRITE, parent_inode, m_shells[sid].m_user)) {
 		writeOutput("del: cannot delete file in '" + parent_dentry->m_filename + "': Permission denied", sid);
+	close(parent_dentry->m_inode, "w");
 		return -1;
 	}
 

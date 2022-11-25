@@ -38,17 +38,20 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 
 	auto dentry = getDirectoryEntry(path, sid);
 	if (dentry == nullptr) return -1;
-	
+
 	open(dentry->m_inode, "w", sid);
+	std::this_thread::sleep_for(std::chrono::seconds(3)); // for debug
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {
 		writeOutput("write: " + dentry->m_filename + ": Is a directory", sid);
+		close(dentry->m_inode, "w");
 		return -1;
 	}
 
 	if (!checkPermission(Permission::WRITE, inode, m_shells[sid].m_user)) {
 		writeOutput("write: cannot write file '" + dentry->m_filename + "': Permission denied", sid);
+		close(dentry->m_inode, "w");
 		return -1;
 	}
 
@@ -58,11 +61,12 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 		int ret = expandFileSize(inode, inc_size);
 		if (ret == -1) {
 			writeOutput("error: no enough blocks", sid);
+			close(dentry->m_inode, "w");
 			return -1;
 		}
 	}
 	else {
-		inode->m_size = content.size(); 
+		inode->m_size = content.size();
 	}
 
 	int size = inode->m_blocks * DiskManager::block_size;

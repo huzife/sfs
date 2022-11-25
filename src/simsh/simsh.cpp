@@ -96,7 +96,7 @@ void SimShell::send(std::string command) {
 				m_cwd.pop_back();
 			return;
 		}
-		
+
 		if (ret.back() != '\n')
 			ret += '\n';
 
@@ -254,14 +254,18 @@ void SimShell::moveRight() {
 void SimShell::lastCommand() {
 	if (hist_idx <= 0) return;
 
-	strcpy(buffer, m_history[--hist_idx].data());
+	hist_idx--;
+	strcpy(buffer, m_history[hist_idx].data());
 	cur_idx = strlen(buffer);
 }
 
 void SimShell::nextCommand() {
-	if (hist_idx >= m_history.size() - 1) return;
+	if (hist_idx >= m_history.size()) return;
 
-	strcpy(buffer, m_history[++hist_idx].data());
+	if (++hist_idx == m_history.size())
+		buffer[0] = '\0';
+	else
+		strcpy(buffer, m_history[hist_idx].data());
 	cur_idx = strlen(buffer);
 }
 

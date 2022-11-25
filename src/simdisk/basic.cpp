@@ -197,3 +197,28 @@ void DirFile::load(std::shared_ptr<char[]> buffer) {
 		cnt++;
 	}
 }
+
+// FileStatus
+void FileStatus::write() {
+	sem_wait(&w);
+	sem_wait(&rw);
+}
+
+void FileStatus::finishWrite() {
+	sem_post(&rw);
+	sem_post(&w);
+}
+
+void FileStatus::read() {
+	sem_wait(&w);
+	if (count == 0)
+		sem_wait(&rw);
+	count++;
+	sem_post(&w);
+}
+
+void FileStatus::finishRead() {
+	count--;
+	if (count == 0)
+		sem_post(&rw);
+}
