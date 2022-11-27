@@ -240,7 +240,6 @@ int DiskManager::copy(int argc, char *argv[], int sid) {
 
 		// create index node
 		std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>(*src_inode);
-		// new_inode->m_owner = 0;  // owner should be changed to the new owner
 		new_inode->m_location = allocFileBlock(new_inode->m_blocks);
 		auto now = std::chrono::system_clock::now();
 		new_inode->m_create_time = now;

@@ -14,13 +14,11 @@ void DiskManager::start() {
 	opterr = 0; // disable error info of getopt
 
 	initDisk();
-	boot();	
+	boot();
 	checkFiles();
 	loadUsers();
 	listenLogin();
 }
-
-
 
 int DiskManager::open(int fid, std::string mode, int sid) {
 	if (mode == "r")
@@ -40,10 +38,14 @@ int DiskManager::close(int fid, std::string mode) {
 	else
 		return -1;
 
-	if (m_file_status[fid].count == 0)
-		m_file_status.erase(fid);
-	
 	return 0;
+}
+
+std::string DiskManager::getUserName(int uid) {
+	if (m_usernames.find(uid) == m_usernames.end())
+		return "";
+	
+	return m_usernames[uid];
 }
 
 DiskBlock DiskManager::readBlock(int id) {
@@ -90,16 +92,18 @@ void DiskManager::boot() {
 
 void DiskManager::checkFiles() {
 	// check /etc/passwd
-	if (!checkAndCreate("/etc/passwd", FileType::NORMAL)) {
+	if (!checkAndCreate("/etc/passwd", FileType::NORMAL, 0)) {
 		exec("write /etc/passwd root:password:0:/root\n", 0);
+		exec("chmod 700 /etc/passwd/", 0);
 	}
-	checkAndCreate("/root", FileType::DIRECTORY);
-	checkAndCreate("/home", FileType::DIRECTORY);
+	checkAndCreate("/root", FileType::DIRECTORY, 0);
+	checkAndCreate("/home", FileType::DIRECTORY, 0);
 }
 
 void DiskManager::shutdown() {
 	std::cout << "[disk_manager]: shuting down" << std::endl;
 
+	system(std::string("ipcrm -q " + std::to_string(msgget(getpid(), IPC_CREAT | 0666))).data());
 	killThreads();
 	saveSuperBlock();
 	saveFAT();
@@ -204,7 +208,10 @@ void DiskManager::loadUsers() {
 
 		// read home path
 		u.m_home = user.substr(l, r - l);
+		checkAndCreate(u.m_home, FileType::DIRECTORY, u.m_uid);
 		m_users[u.m_name] = u;
+
+		m_usernames[u.m_uid] = u.m_name;
 	}
 }
 
@@ -236,7 +243,7 @@ std::string DiskManager::timeToDate(const std::chrono::system_clock::time_point 
 	return std::string(buffer);
 }
 
-bool DiskManager::checkAndCreate(std::string path, FileType type) {
+bool DiskManager::checkAndCreate(std::string path, FileType type, int uid) {
 	auto dirs = splitPath(path);
 	assert(dirs[0] == "/");
 
@@ -260,6 +267,10 @@ bool DiskManager::checkAndCreate(std::string path, FileType type) {
 				char *argv[] = {std::string("newfile").data(), cur.data()};
 				newfile(2, argv, 0);
 			}
+			auto temp_dentry = getDirectoryEntry(path, 0);
+			auto temp_inode = getIndexNode(temp_dentry->m_inode);
+			temp_inode->m_owner = uid;
+			writeIndexNode(temp_dentry->m_inode, temp_inode);
 			return false;
 		}
 
@@ -558,7 +569,7 @@ bool DiskManager::checkPermission(Permission need, std::shared_ptr<IndexNode> in
 		perm = inode->m_other_permission;
 
 	for (int i = 0; i < 2; i++) {
-		if (static_cast<int>(need) & (1 << i) && !(static_cast<int>(need) & (1 << i)))
+		if (static_cast<int>(need) & (1 << i) && !(static_cast<int>(perm) & (1 << i)))
 			return false;
 	}
 
@@ -749,6 +760,7 @@ void DiskManager::run(int sid) {
 		std::this_thread::sleep_for(dura);
 	}
 
+	system(std::string("ipcrm -m " + std::to_string(shmget(sid, sizeof(ShareMemory), IPC_CREAT | 0777))).data());
 	m_threads.erase(sid);
 	m_shells.erase(sid);
 }

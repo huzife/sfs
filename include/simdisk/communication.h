@@ -16,10 +16,8 @@ public:
 	constexpr static int req_type = 1;
 	constexpr static int req_size = 104; // sizeof(Request) - sizeof(type)
 
-	long type; // message type
-	int pid;   // pid of the process that send the message
-	// int uid;   // user id
-
+	long type;		   // message type
+	int pid;		   // pid of the process that send the message
 	char user[32];	   // user name
 	char password[64]; // password
 };

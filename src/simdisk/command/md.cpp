@@ -98,21 +98,7 @@ int DiskManager::md(int argc, char *argv[], int sid) {
 	writeFile(inode, file);
 
 	// create index node
-	std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>();
-	new_inode->m_type = FileType::DIRECTORY;
-	new_inode->m_owner_permission = static_cast<Permission>(7);
-	new_inode->m_other_permission = static_cast<Permission>(5);
-	new_inode->m_owner = m_shells[sid].m_user;
-	new_inode->m_size = DiskManager::block_size;
-	new_inode->m_subs = 2;
-	new_inode->m_blocks = 1;
-	new_inode->m_location = allocFileBlock(1);
-	new_inode->m_count = 1;
-	auto now = std::chrono::system_clock::now();
-	new_inode->m_create_time = now;
-	new_inode->m_access_time = now;
-	new_inode->m_modify_time = now;
-	new_inode->m_change_time = now;
+	std::shared_ptr<IndexNode> new_inode = std::make_shared<IndexNode>(FileType::DIRECTORY, m_shells[sid].m_user, allocFileBlock(1));
 	writeIndexNode(new_dentry.m_inode, new_inode);
 
 	// create file

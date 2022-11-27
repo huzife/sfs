@@ -2,6 +2,8 @@
 
 static const struct option long_options[] = {
 	{"append", no_argument, nullptr, 'a'},
+	{"newline", no_argument, nullptr, 'n'},
+	{"delay", no_argument, nullptr, 'd'},
 	{nullptr, no_argument, nullptr, 0}};
 
 int DiskManager::write(int argc, char *argv[], int sid) {
@@ -9,10 +11,18 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 	// get options
 	int ch;
 	bool append = false;
-	while ((ch = getopt_long(argc, argv, "a", long_options, nullptr)) != -1) {
+	bool newline = false;
+	bool delay = false;
+	while ((ch = getopt_long(argc, argv, "and", long_options, nullptr)) != -1) {
 		switch (ch) {
 		case 'a':
 			append = true;
+			break;
+		case 'n':
+			newline = true;
+			break;
+		case 'd':
+			delay = true;
 			break;
 		default:
 			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
@@ -36,11 +46,15 @@ int DiskManager::write(int argc, char *argv[], int sid) {
 	path = argv[optind];
 	content = argv[optind + 1];
 
+	if (newline) content += '\n';
+
 	auto dentry = getDirectoryEntry(path, sid);
 	if (dentry == nullptr) return -1;
 
 	open(dentry->m_inode, "w", sid);
-	std::this_thread::sleep_for(std::chrono::seconds(3)); // for debug
+	if (delay) {
+		std::this_thread::sleep_for(std::chrono::seconds(3));
+	}
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {

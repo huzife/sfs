@@ -15,9 +15,8 @@ void SimShell::start() {
 
 	// input password
 	std::string password;
-	std::cout << "password: \033[?25l";
+	std::cout << "password: ";
 	std::cin >> password;
-	std::cout << "\033[?25h";
 	strcpy(req.password, password.data());
 
 	std::cin.ignore();
@@ -39,6 +38,7 @@ void SimShell::start() {
 		return;
 	}
 
+	m_home = ret;
 	m_cwd = ret;
 
 	run();
@@ -194,11 +194,21 @@ void SimShell::flush() {
 void SimShell::showInfo() {
 	print(m_user_name, Color::GREEN);
 	print(":", Color::YELLOW);
-	print(m_cwd, Color::BLUE);
-	print("$ ", Color::YELLOW);
+
+	std::string cwd;
+	if (m_cwd.substr(0, m_home.size()) == m_home)
+		cwd = "~" + m_cwd.substr(m_home.size());
+	else
+		cwd = m_cwd;
+	print(cwd, Color::BLUE);
+
+	if (m_user_name == "root")
+		print("# ", Color::YELLOW);
+	else
+		print("$ ", Color::YELLOW);
 
 	// update x and y;
-	int len = m_user_name.size() + m_cwd.size() + 3;
+	int len = m_user_name.size() + cwd.size() + 3;
 	x = len % win_size.ws_col;
 	setY(len / win_size.ws_col);
 }
@@ -219,6 +229,9 @@ void SimShell::getInput() {
 			case 'B': nextCommand(); break; // down
 			case 'C': moveRight(); break;	// right
 			case 'D': moveLeft(); break;	// left
+			case 'H': moveFront(); break;	// home
+			case 'F': moveBack(); break;	// end
+			// default: insertChar(ch); break; // for key test
 			}
 		}
 		else {
@@ -249,6 +262,14 @@ void SimShell::moveLeft() {
 
 void SimShell::moveRight() {
 	if (cur_idx < strlen(buffer)) cur_idx++;
+}
+
+void SimShell::moveFront() {
+	cur_idx = 0;
+}
+
+void SimShell::moveBack() {
+	cur_idx = strlen(buffer);
 }
 
 void SimShell::lastCommand() {

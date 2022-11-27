@@ -80,9 +80,9 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 
 	// get max length of m_owner
 	int max_owner_len =
-		std::to_string((*std::max_element(dirs.begin(), dirs.end(),
-										  [](std::shared_ptr<IndexNode> a, std::shared_ptr<IndexNode> b) {
-											  return a->m_owner < b->m_owner;
+		getUserName((*std::max_element(dirs.begin(), dirs.end(),
+										  [this](std::shared_ptr<IndexNode> a, std::shared_ptr<IndexNode> b) {
+											  return getUserName(a->m_owner).size() < getUserName(b->m_owner).size();
 										  }))
 						   ->m_owner)
 			.size()
@@ -105,7 +105,7 @@ int DiskManager::dir(int argc, char *argv[], int sid) {
 		out += IndexNode::PermissionToStr(dirs[i]->m_owner_permission);
 		out += IndexNode::PermissionToStr(dirs[i]->m_other_permission);
 		out += fill(std::to_string(dirs[i]->m_subs), max_subs_len, 'l');
-		out += fill(std::to_string(dirs[i]->m_owner), max_owner_len, 'l');
+		out += fill(getUserName(dirs[i]->m_owner), max_owner_len, 'l');
 		out += fill(std::to_string(dirs[i]->m_size), max_size_len, 'l');
 		out += " " + timeToDate(dirs[i]->m_modify_time);
 		out += " " + names[i];

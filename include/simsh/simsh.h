@@ -41,6 +41,7 @@ private:
 	ShareMemory *m_shm;
 
 	std::string m_user_name;
+	std::string m_home;
 	std::string m_cwd;
 
 	// terminal
@@ -85,6 +86,10 @@ private:
 	void moveRight();
 
 	void moveLeft();
+
+	void moveFront();
+
+	void moveBack();
 
 	void lastCommand();
 

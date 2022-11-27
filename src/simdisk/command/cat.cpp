@@ -1,14 +1,19 @@
 #include "simdisk/disk-manager.h"
 
 static const struct option long_options[] = {
+	{"delay", no_argument, nullptr, 0},
 	{nullptr, no_argument, nullptr, 0}};
 
 int DiskManager::cat(int argc, char *argv[], int sid) {
 	optind = 0;
 	// get options
 	int ch;
-	while ((ch = getopt_long(argc, argv, "", long_options, nullptr)) != -1) {
+	bool delay = false;
+	while ((ch = getopt_long(argc, argv, "d", long_options, nullptr)) != -1) {
 		switch (ch) {
+		case 'd':
+			delay = true;
+			break;
 		default:
 			std::string out = "invalid option '" + std::string(argv[optind - 1]) + "'\n";
 			if (sid != 0)
@@ -29,7 +34,9 @@ int DiskManager::cat(int argc, char *argv[], int sid) {
 	if (dentry == nullptr) return -1;
 
 	open(dentry->m_inode, "r", sid);
-	std::this_thread::sleep_for(std::chrono::seconds(3)); // for debug
+	if (delay) {
+		std::this_thread::sleep_for(std::chrono::seconds(3)); // for debug
+	}
 
 	auto inode = getIndexNode(dentry->m_inode);
 	if (inode->m_type == FileType::DIRECTORY || inode->m_type == FileType::LINK) {

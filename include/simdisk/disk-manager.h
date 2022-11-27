@@ -58,6 +58,7 @@ private:
 	std::unordered_map<int, int> m_threads;
 	std::unordered_map<int, ShellInfo> m_shells;
 	std::unordered_map<std::string, User> m_users;
+	std::unordered_map<int, std::string> m_usernames;
 	std::unordered_map<int, FileStatus> m_file_status;
 
 public:
@@ -70,6 +71,8 @@ public:
 	int open(int fid, std::string mode, int sid);
 
 	int close(int fid, std::string mode);
+
+	std::string getUserName(int uid);
 
 private:
 	DiskBlock readBlock(int id);
@@ -108,7 +111,7 @@ private:
 
 	std::string timeToDate(const std::chrono::system_clock::time_point &time);
 
-	bool checkAndCreate(std::string path, FileType type);
+	bool checkAndCreate(std::string path, FileType type, int uid);
 
 	std::shared_ptr<IndexNode> getIndexNode(int id);
 
